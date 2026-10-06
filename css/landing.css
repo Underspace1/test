@@ -211,8 +211,10 @@ a { color: inherit; text-decoration: none; }
 .slide-bullets li { display: flex; align-items: center; gap: 10px; color: rgb(255 255 255 / .85); }
 .slide-bullets .ico { color: #fff; flex: none; }
 .slide-visual { position: relative; min-width: 0; display: grid; place-items: center; }
-.slide-visual .cards3 { width: 100%; margin: 0; }
-.slide-visual .mini { min-width: 0; }
+.slide-visual .cards3 { width: 100%; margin: 0; gap: 14px; }
+.slide-visual .mini { min-width: 0; aspect-ratio: 3 / 4.2; }
+.slide-visual .mini .w.l { display: none; }
+.slide-visual .mini .inner { inset: 12px 12px 46px; }
 .slide .slide-text > * { transition: transform .8s var(--ease), opacity .8s var(--ease); transition-delay: calc(var(--d, 0) * 60ms); }
 .slide:not(.is-active) .slide-text > * { opacity: 0; transform: translateY(14px); }
 .slide-text > :nth-child(2) { --d: 1; } .slide-text > :nth-child(3) { --d: 2; } .slide-text > :nth-child(4) { --d: 3; }

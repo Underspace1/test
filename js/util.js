@@ -100,7 +100,7 @@
         const v = props[k];
         if (v == null || v === false) continue;
         if (k === 'class') el.className = v;
-        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'style' && typeof v === 'object') { for (const sk of Object.keys(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, v[sk]); else el.style[sk] = v[sk]; } }
         else if (k === 'text') el.textContent = v;
         else if (k === 'value' || k === 'checked') el[k] = v;
         else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);

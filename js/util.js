@@ -191,6 +191,27 @@
     else Bio.startLoop();
   });
 
+  /* ---------- marque Arcturus ---------- */
+  Bio.brand = {
+    name: 'Arcturus',
+    tagline: "Tout gravite autour de toi.",
+    accent: '#FFA24A', accent2: '#FF6A3D',
+    // mark monochrome (currentColor) et mark accent (dégradés inline) — markup statique
+    markMono: "<circle cx=\"32\" cy=\"32\" r=\"15\" fill=\"currentColor\" fill-opacity=\".1\"/><circle cx=\"32\" cy=\"32\" r=\"9.5\" fill=\"currentColor\"/><path fill=\"currentColor\" d=\"M43.50 10.37A24.5 24.5 0 1 0 54.72 41.18L52.68 40.35L50.81 43.69L48.42 46.63L45.57 49.11L42.37 51.04L38.91 52.39L35.29 53.12L31.63 53.22L28.03 52.69L24.60 51.57L21.44 49.88L18.63 47.69L16.26 45.07L14.39 42.11L13.07 38.89L12.32 35.52L12.16 32.10L12.58 28.73L13.58 25.50L15.10 22.52L17.09 19.86L19.49 17.60L22.21 15.81L25.19 14.51L28.31 13.75L31.49 13.55L34.64 13.88L37.65 14.75L40.45 16.11Z\"/>",
+    markAccent: "<defs><radialGradient id=\"arc-halo\" cx=\"32\" cy=\"32\" r=\"16\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#FFA24A\" stop-opacity=\".45\"/><stop offset=\"1\" stop-color=\"#FFA24A\" stop-opacity=\"0\"/></radialGradient><radialGradient id=\"arc-core\" cx=\"29\" cy=\"29\" r=\"12\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#FFF1D6\"/><stop offset=\".45\" stop-color=\"#FFBE6A\"/><stop offset=\"1\" stop-color=\"#FF8A2E\"/></radialGradient><linearGradient id=\"arc-trail\" x1=\"46\" y1=\"8\" x2=\"30\" y2=\"56\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#FFD08A\"/><stop offset=\".45\" stop-color=\"#FFA24A\"/><stop offset=\"1\" stop-color=\"#FF6A3D\" stop-opacity=\".55\"/></linearGradient></defs><circle cx=\"32\" cy=\"32\" r=\"16\" fill=\"url(#arc-halo)\"/><circle cx=\"32\" cy=\"32\" r=\"9.5\" fill=\"url(#arc-core)\"/><path fill=\"url(#arc-trail)\" d=\"M43.50 10.37A24.5 24.5 0 1 0 54.72 41.18L52.68 40.35L50.81 43.69L48.42 46.63L45.57 49.11L42.37 51.04L38.91 52.39L35.29 53.12L31.63 53.22L28.03 52.69L24.60 51.57L21.44 49.88L18.63 47.69L16.26 45.07L14.39 42.11L13.07 38.89L12.32 35.52L12.16 32.10L12.58 28.73L13.58 25.50L15.10 22.52L17.09 19.86L19.49 17.60L22.21 15.81L25.19 14.51L28.31 13.75L31.49 13.55L34.64 13.88L37.65 14.75L40.45 16.11Z\"/>",
+    mark(size = 24, accent = false) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 64 64');
+      svg.setAttribute('width', size);
+      svg.setAttribute('height', size);
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('class', 'mark' + (accent ? ' mark-accent' : ''));
+      svg.innerHTML = accent ? this.markAccent : this.markMono;
+      return svg;
+    },
+  };
+
   /* ---------- thèmes ---------- */
   Bio.themes = {
     white: { label: 'Blanc', a: '#f4f4f5', b: '#a1a1aa' },
@@ -422,7 +443,7 @@
     { path: 'avatarRing', min: 'premium', label: 'Anneau d’avatar', test: (v) => v !== 'none', fallback: 'none' },
     { path: 'music.tracks', min: 'premium', label: 'Pistes audio personnelles', test: (v) => Array.isArray(v) && v.length > 0, fallback: [] },
     { path: 'links', min: 'premium', label: 'Plus de 5 liens', test: (v) => Array.isArray(v) && v.length > 5, fallback: (v) => v.slice(0, 5), limit: 5 },
-    { path: 'premium.branding', min: 'premium', label: 'Retrait de la mention « Fait avec biolink »', test: (v) => v === false, fallback: true },
+    { path: 'premium.branding', min: 'premium', label: 'Retrait de la mention « Fait avec Arcturus »', test: (v) => v === false, fallback: true },
     { path: 'premium.badge', min: 'premium', label: 'Badge de plan à côté du nom', test: (v) => v === true, fallback: false },
     { path: 'background.type', min: 'vip', label: 'Fond vidéo en boucle', test: (v) => v === 'video', fallback: 'shader' },
     { path: 'card.border', min: 'vip', label: 'Anneau animé autour des cartes', test: (v) => v === 'gradient', fallback: 'none' },

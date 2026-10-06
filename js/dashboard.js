@@ -291,7 +291,7 @@
     D.syncs.push(paint);
     paint();
     return field('Plan actif', h('div', { class: 'f-ctl col', style: { alignItems: 'stretch', gap: '14px' } }, wrap,
-      h('p', { class: 'gates-note', text: 'Plan déclaratif : biolink ne vérifie aucun paiement, config.js fait foi. Les réglages réservés restent dans ton brouillon et se réactivent dès que tu passes au plan supérieur.' }),
+      h('p', { class: 'gates-note', text: 'Plan déclaratif : Arcturus ne vérifie aucun paiement, config.js fait foi. Les réglages réservés restent dans ton brouillon et se réactivent dès que tu passes au plan supérieur.' }),
       h('div', { class: 'gates-wrap' }, h('p', { class: 'gates-k', text: 'Fonctions selon le plan' }), gatesList)), { stack: true, hint: 'Déclare ici le plan que tu as choisi : les fonctions réservées se débloquent dans le dashboard et sur ta page.' });
   };
 
@@ -633,7 +633,7 @@
       { fields: [
         { type: 'planpicker' },
         { type: 'toggle', path: 'premium.badge', label: 'Badge de plan', hint: 'Affiche l’icône Premium / VIP à côté du nom' },
-        { type: 'toggle', path: 'premium.branding', label: 'Mention « Fait avec biolink »', hint: 'Toujours affichée avec le plan Gratuit', path2: 'premium.branding' },
+        { type: 'toggle', path: 'premium.branding', label: 'Mention « Fait avec Arcturus »', hint: 'Toujours affichée avec le plan Gratuit' },
       ] },
       { title: 'Liens de paiement', fields: [
         { type: 'note', content: () => h('span', {}, 'Le site est statique : le paiement passe par un lien hébergé (', h('b', { text: 'Stripe Payment Link' }), ', Ko-fi, PayPal…). Après paiement, choisis ton plan ci-dessus et télécharge config.js. Ces liens sont utilisés par les boutons de la page d’accueil.') },
@@ -661,6 +661,8 @@
       ] },
     ] },
   ];
+
+  $('#brand-mark').append(Bio.brand.mark(28, true));
 
   /* ---------------------------------------------------------------- rendu */
   const main = $('#d-main'), nav = $('#d-nav');

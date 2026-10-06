@@ -146,7 +146,7 @@ window.BIO_CONFIG = {
     plan: 'premium',
     checkout: { premium: '', vip: '' },
     badge: true,                    // icône Premium / VIP à côté du nom
-    branding: false,                // false = retire « Fait avec biolink » (Premium et plus)
+    branding: false,                // false = retire « Fait avec Arcturus » (Premium et plus)
   },
 
   /* ---------- compteur de vues ----------

@@ -18,7 +18,7 @@
   /* ------------------------------------------------------------ nav */
   const nav = $('#l-nav');
   nav.append(h('div', { class: 'wrap' },
-    h('a', { class: 'brand', href: '#top' }, h('span', { class: 'brand-mark', text: '✦' }), 'biolink'),
+    h('a', { class: 'brand', href: '#top' }, h('span', { class: 'brand-mark' }, Bio.brand.mark(26, true)), h('span', { class: 'brand-word', text: Bio.brand.name })),
     h('nav', { class: 'l-links', 'aria-label': 'Sections' }, (site.nav || []).map((n) => h('a', { href: n.href, text: n.label }))),
     h('span', { class: 'spacer' }),
     h('div', { class: 'nav-cta' },
@@ -33,7 +33,8 @@
   const h1 = h('h1', {}, titleParts.map((t, i) => h('span', { class: i ? 'dim' : null, text: (i ? ' ' : '') + t })));
   const avatars = h('span', { class: 'avatars' }, PRESET_COLORS.map((c) => h('i', { style: { '--c1': c[0], '--c2': c[1] } })));
   main.append(h('section', { class: 'hero' }, h('div', { class: 'wrap' },
-    h('a', { class: 'pill', href: '#tarifs' }, avatars, h('span', { text: hero.badge || 'Rejoins les créateurs qui utilisent biolink' }), Bio.icon('arrow', 14)),
+    h('a', { class: 'pill', href: '#tarifs' }, avatars, h('span', { text: hero.badge || 'Rejoins les créateurs qui publient avec ' + Bio.brand.name }), Bio.icon('arrow', 14)),
+    h('div', { class: 'hero-mark' }, Bio.brand.mark(120, true)),
     h1,
     h('p', { class: 'sub', text: hero.subtitle || '' }),
     h('div', { class: 'ctas' },
@@ -248,7 +249,7 @@
     h('h2', { text: fin.title || 'Prêt à faire ta page ?' }), h('p', { text: fin.text || '' }),
     h('div', { class: 'ctas' }, h('a', { class: 'btn primary lg', href: 'dashboard.html' }, fin.cta || 'Ouvrir le dashboard', Bio.icon('arrow', 16)), h('a', { class: 'btn lg', href: 'profile.html', text: fin.secondary || 'Voir la démo' })))));
   $('#l-foot').append(h('div', { class: 'wrap' },
-    h('span', { text: '© ' + new Date().getFullYear() + ' biolink · statique, sans compte, sans backend' }),
+    h('span', { class: 'foot-brand' }, Bio.brand.mark(16), h('span', { text: '© ' + new Date().getFullYear() + ' ' + Bio.brand.name + ' · ' + Bio.brand.tagline })),
     h('nav', { class: 'links', 'aria-label': 'Pied de page' }, h('a', { href: 'profile.html', text: 'Démo' }), h('a', { href: 'dashboard.html', text: 'Dashboard' }), h('a', { href: '#tarifs', text: 'Tarifs' }), h('a', { href: '#faq', text: 'FAQ' }))));
 
   /* ------------------------------------------------------------ apparition au scroll */

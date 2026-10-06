@@ -24,7 +24,7 @@ window.BIO_SITE = {
   "navDemo": "Voir la démo",
   "navCta": "Ouvrir le dashboard",
   "hero": {
-    "badge": "Rejoins les créateurs qui publient avec biolink",
+    "badge": "Rejoins les créateurs qui publient avec Arcturus",
     "title": "Ton profil. Ton style.",
     "subtitle": "Une page de bio en verre sombre, avec Discord, Roblox, osu! et ta musique en direct. Tout se règle dans un dashboard visuel, sans coder. Statique, sans compte, hébergée où tu veux.",
     "primaryCta": "Créer ma page",
@@ -145,7 +145,7 @@ window.BIO_SITE = {
     {
       "id": "statique",
       "title": "Statique, sans compte, sans backend",
-      "subtitle": "biolink est un dossier de fichiers. Voilà ce que ça change pour toi et pour tes visiteurs.",
+      "subtitle": "Arcturus est un dossier de fichiers. Voilà ce que ça change pour toi et pour tes visiteurs.",
       "items": [
         {
           "title": "Héberge où tu veux",
@@ -188,7 +188,7 @@ window.BIO_SITE = {
           "Fonds fluide WebGL, aurore, grille et image",
           "9 thèmes, 3 polices, 7 modèles",
           "Dashboard complet avec aperçu en direct",
-          "Mention « Fait avec biolink » en pied de page"
+          "Mention « Fait avec Arcturus » en pied de page"
         ],
         "cta": "Créer ma page",
         "highlight": false
@@ -206,7 +206,7 @@ window.BIO_SITE = {
           "Tes propres pistes audio avec pochette",
           "Les 8 polices, les 6 effets de particules et l’anneau d’avatar",
           "Liens sans limite",
-          "Badge Premium à côté du nom et retrait de la mention « Fait avec biolink »"
+          "Badge Premium à côté du nom et retrait de la mention « Fait avec Arcturus »"
         ],
         "cta": "Passer Premium",
         "highlight": true
@@ -229,14 +229,14 @@ window.BIO_SITE = {
         "highlight": false
       }
     ],
-    "note": "Le plan est déclaratif : biolink ne vérifie aucun paiement, config.js fait foi. Les abonnements financent le développement, le support et les prochains widgets.",
+    "note": "Le plan est déclaratif : Arcturus ne vérifie aucun paiement, config.js fait foi. Les abonnements financent le développement, le support et les prochains widgets.",
     "fallbackUrl": ""
   },
   "faqTitle": "Questions fréquentes",
   "faq": [
     {
       "q": "Comment fonctionne le paiement sans serveur ?",
-      "a": "biolink n’a ni compte ni backend. Le bouton d’un plan ouvre un lien de paiement hébergé (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans config.js, dans premium.checkout. Une fois payé, tu ouvres le dashboard, section Abonnement, tu sélectionnes ton plan et tu télécharges config.js : les fonctions se débloquent sur ta page."
+      "a": "Arcturus n’a ni compte ni backend. Le bouton d’un plan ouvre un lien de paiement hébergé (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans config.js, dans premium.checkout. Une fois payé, tu ouvres le dashboard, section Abonnement, tu sélectionnes ton plan et tu télécharges config.js : les fonctions se débloquent sur ta page."
     },
     {
       "q": "Le plan est-il vérifié quelque part ?",
@@ -256,8 +256,8 @@ window.BIO_SITE = {
     }
   ],
   "final": {
-    "title": "Prêt à faire ta page ?",
-    "text": "Ouvre le dashboard, règle ta page en regardant l’aperçu, télécharge config.js. Rien d’autre à installer.",
+    "title": "Tout gravite autour de toi.",
+    "text": "Ouvre le dashboard, règle ta page en regardant l’aperçu, télécharge config.js. Rien d’autre à installer : ta page, et tout ce qui brille autour.",
     "cta": "Créer ma page",
     "secondary": "Voir la démo"
   }

@@ -57,7 +57,7 @@
       const data = {
         status: 'online',
         custom: { emoji: '', text: 'code & chill' },
-        activity: { label: 'Joue à', name: 'Visual Studio Code', details: 'Édite config.js', state: 'Espace de travail : biolink', image: '', start: started },
+        activity: { label: 'Joue à', name: 'Visual Studio Code', details: 'Édite config.js', state: 'Espace de travail : arcturus', image: '', start: started },
         spotify: null,
       };
       if (pl && pl.playing && tr) {

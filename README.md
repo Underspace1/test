@@ -1,6 +1,6 @@
-# ✦ biolink
+# ✦ Arcturus
 
-Une page de **bio link** minimaliste et moderne, 100 % statique (HTML + CSS + JS, **aucune dépendance, aucun build**) — dans l'esprit de *drift.rip* / *guns.lol* : des **widgets** empilés en verre sombre sur un fond monochrome, un **dashboard visuel** pour tout régler sans toucher au code, et quelques surprises en plus.
+**Tout gravite autour de toi.** Une page de **bio link** minimaliste et moderne, 100 % statique (HTML + CSS + JS, **aucune dépendance, aucun build**) — dans l'esprit de *drift.rip* / *guns.lol* : des **widgets** empilés en verre sombre sur un fond monochrome, un **dashboard visuel** pour tout régler sans toucher au code, et quelques surprises en plus.
 
 ```
 index.html      → la page d’accueil (présentation + tarifs)
@@ -134,11 +134,11 @@ Sans serveur, le compteur est **local** : `base` + 1 par jour et par navigateur.
 
 ## Abonnement premium
 
-biolink est statique : il n'y a ni compte ni vérification de paiement. Le plan est **déclaratif** (`premium.plan` dans `config.js` : `free`, `premium` ou `vip`), le paiement passe par un **lien hébergé** (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans `premium.checkout`, et la page d'accueil (`index.html`) présente les trois niveaux avec leurs prix (définis dans `site.js`).
+Arcturus est statique : il n'y a ni compte ni vérification de paiement. Le plan est **déclaratif** (`premium.plan` dans `config.js` : `free`, `premium` ou `vip`), le paiement passe par un **lien hébergé** (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans `premium.checkout`, et la page d'accueil (`index.html`) présente les trois niveaux avec leurs prix (définis dans `site.js`).
 
 | Plan | Prix | Débloque |
 |---|---|---|
-| Gratuit | 0 € | profil, à propos, vues, Discord, musique générée, 5 liens, 9 thèmes, 3 polices, fonds fluide / aurore / grille / image, dashboard complet ; mention « Fait avec biolink » |
+| Gratuit | 0 € | profil, à propos, vues, Discord, musique générée, 5 liens, 9 thèmes, 3 polices, fonds fluide / aurore / grille / image, dashboard complet ; mention « Fait avec Arcturus » |
 | Premium | 3 €/mois · 30 €/an | widgets Roblox, osu! et lecteur intégré, pistes audio personnelles, 8 polices, particules, anneau d'avatar, liens sans limite, badge Premium, retrait de la mention |
 | VIP | 6 €/mois · 60 €/an | fond vidéo, curseur personnalisé, traînée d'étincelles, glitch du nom, anneau animé autour des cartes, compteur de vues global, badge VIP doré |
 

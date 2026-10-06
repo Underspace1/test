@@ -203,7 +203,7 @@
       neofetch: { d: 'infos système (plus ou moins)', run() {
         const art = ['      ✦      ', '    ✦ ✦ ✦    ', '  ✦  ╭───╮  ✦  ', '✦    │ N │    ✦', '  ✦  ╰───╯  ✦  ', '    ✦ ✦ ✦    ', '      ✦      '];
         const info = [
-          cfg().username + '@biolink', '───────────────',
+          cfg().username + '@arcturus', '───────────────',
           'OS       : ' + (navigator.platform || 'web'),
           'Écran    : ' + innerWidth + '×' + innerHeight,
           'Thème    : ' + (Bio.themes[cfg().theme] ? Bio.themes[cfg().theme].label : 'perso'),

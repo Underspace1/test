@@ -230,7 +230,7 @@
 
     // clin d'œil pour les curieux
     try {
-      console.log('%c✦ biolink', 'font:700 22px system-ui;color:' + Bio.themes.violet.a + ';text-shadow:0 0 12px ' + Bio.themes.violet.b);
+      console.log('%c✦ Arcturus', 'font:700 22px system-ui;color:' + Bio.themes.violet.a + ';text-shadow:0 0 12px ' + Bio.themes.violet.b);
       console.log('%cTape le code Konami, ou appuie sur « ` » pour ouvrir le terminal.', 'color:#999');
     } catch (e) { /* ignore */ }
   }

@@ -236,7 +236,7 @@
       const el = b && b();
       if (el) col.append(rev(el));
     });
-    const branding = cfg.premium.plan === 'free' || cfg.premium.branding ? h('a', { class: 'brandlink', href: 'index.html', target: '_blank', rel: 'noopener' }, Bio.icon('sparkles', 11), h('span', { text: 'Fait avec biolink' })) : null;
+    const branding = cfg.premium.plan === 'free' || cfg.premium.branding ? h('a', { class: 'brandlink', href: 'index.html', target: '_blank', rel: 'noopener' }, Bio.brand.mark(12), h('span', { text: 'Fait avec ' + Bio.brand.name })) : null;
     col.append(rev(h('footer', { class: 'foot' }, h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }), branding, h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })))));
 
     UI.buildTools();

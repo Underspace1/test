@@ -395,7 +395,10 @@
     about: { label: 'À propos', desc: 'un court texte libre', icon: 'pen' },
     views: { label: 'Vues', desc: 'compteur de visites', icon: 'eye' },
     discord: { label: 'Discord', desc: 'présence en direct', icon: 'discord' },
-    music: { label: 'Musique', desc: 'lecteur', icon: 'music' },
+    roblox: { label: 'Roblox', desc: 'amis, abonnés, présence', icon: 'roblox' },
+    osu: { label: 'osu!', desc: 'rang, pp, précision', icon: 'osu' },
+    embed: { label: 'Lecteur intégré', desc: 'Spotify, SoundCloud, YouTube, Apple Music', icon: 'headphones' },
+    music: { label: 'Musique', desc: 'lecteur de la page', icon: 'music' },
     links: { label: 'Liens', desc: 'les gros boutons', icon: 'link' },
   };
 
@@ -413,7 +416,7 @@
     uid: 1,
     joined: '',
     pageTitle: '',
-    layout: ['profile', 'about', 'views', 'discord', 'music', 'links'],
+    layout: ['profile', 'about', 'views', 'discord', 'roblox', 'osu', 'embed', 'music', 'links'],
     socialsLimit: 5,
     font: 'inter',
     nameStyle: 'neon',
@@ -429,6 +432,9 @@
     decor: { orbs: false, noise: false, vignette: true, scanlines: false, dots: true },
     effects: { particles: 'none', tilt: true, cursor: false, trail: false, glitch: false, spotlight: true, ripple: true },
     discord: { id: '', demo: true, useAvatar: false, tag: '' },
+    roblox: { id: '', username: '', displayName: '', friends: 0, followers: 0, avatar: '', live: true, proxy: '' },
+    osu: { id: '', username: '', mode: 'osu', country: '', rank: 0, countryRank: 0, pp: 0, accuracy: 0, playcount: 0, level: 0, avatar: '', endpoint: '' },
+    embed: { url: '', title: '' },
     views: { base: 0, endpoint: '' },
     music: { autoplay: true, volume: 0.55, tracks: [] },
     badges: [],
@@ -449,6 +455,7 @@
     'card.style': ['glass', 'solid', 'outline', 'neon'],
     'card.border': ['spotlight', 'gradient', 'none'],
     'effects.particles': ['fireflies', 'snow', 'stars', 'shooting', 'bokeh', 'rain', 'none'],
+    'osu.mode': ['osu', 'taiko', 'fruits', 'mania'],
     theme: Object.keys(Bio.themes),
   };
   Bio.normalize = (cfg) => {
@@ -461,6 +468,7 @@
     const ids = Object.keys(Bio.widgets);
     out.layout = Array.isArray(out.layout) ? out.layout.filter((w, i, a) => ids.includes(w) && a.indexOf(w) === i) : Bio.defaults.layout.slice();
     out.about = String(out.about || '');
+    ['roblox', 'osu', 'embed'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
     out.socialsLimit = Math.max(0, parseInt(out.socialsLimit, 10) || 0);
     ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     if (!Array.isArray(out.music.tracks)) out.music.tracks = [];

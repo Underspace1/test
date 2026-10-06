@@ -119,6 +119,83 @@
     return el;
   };
 
+  /* ---- intégrations : Roblox, osu!, lecteur intégré ---- */
+  const fmtN = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(n));
+  const stat = (icon, value, label) => h('span', { class: 'ig-stat' }, Bio.icon(icon, 14), h('b', { text: value }), h('span', { text: label }));
+  const igCard = (id, brand, tip) => {
+    const img = h('img', { alt: '', draggable: 'false', hidden: true });
+    img.addEventListener('error', () => { img.hidden = true; });
+    img.addEventListener('load', () => { img.hidden = false; });
+    const link = h('a', { class: 'ig-avatar', target: '_blank', rel: 'noopener noreferrer', 'aria-label': tip }, Bio.icon(brand, 26), img, h('span', { class: 'ig-status', 'data-status': 'none' }));
+    const el = widget(id, link, h('div', { class: 'ig-body' },
+      h('div', { class: 'ig-name' }, h('b'), h('span', { class: 'ig-brand', 'data-tip': tip }, Bio.icon(brand, 13))),
+      h('div', { class: 'ig-sub' }), h('div', { class: 'ig-stats' })));
+    return { el, img, link, status: link.querySelector('.ig-status'), name: el.querySelector('.ig-name b'), sub: el.querySelector('.ig-sub'), stats: el.querySelector('.ig-stats') };
+  };
+
+  UI.buildRoblox = function () {
+    const c = Bio.cfg.roblox;
+    if (!c.id && !c.username) return null;
+    UI.el.roblox = igCard('roblox', 'roblox', 'Roblox');
+    UI.renderRoblox(Bio.integrations.roblox);
+    return UI.el.roblox.el;
+  };
+  UI.renderRoblox = function (d) {
+    const r = UI.el && UI.el.roblox;
+    if (!r) return;
+    if (!d) { r.el.hidden = true; return; }
+    r.el.hidden = false;
+    if (d.avatar) { if (r.img.getAttribute('src') !== d.avatar) r.img.src = safeUrl(d.avatar); } else { r.img.hidden = true; r.img.removeAttribute('src'); }
+    r.link.href = d.id ? 'https://www.roblox.com/users/' + d.id + '/profile' : d.name ? 'https://www.roblox.com/search/users?keyword=' + encodeURIComponent(d.name) : '#';
+    r.name.textContent = d.displayName || d.name || 'Roblox';
+    const where = d.presence && d.presence.type === 'ingame' && d.presence.where ? ' · joue à ' + d.presence.where : '';
+    r.sub.textContent = (d.name ? '@' + d.name : '') + where;
+    r.status.dataset.status = d.presence ? d.presence.type : 'none';
+    r.status.setAttribute('data-tip', { online: 'En ligne', ingame: 'En jeu', studio: 'Dans Studio', offline: 'Hors ligne' }[d.presence ? d.presence.type : ''] || '');
+    r.stats.textContent = '';
+    r.stats.append(stat('user', fmtN(d.friends), 'amis'), stat('heart', fmtN(d.followers), 'abonnés'));
+    if (d.created) { const y = new Date(d.created).getFullYear(); if (y) r.stats.append(stat('calendar', String(y), 'membre')); }
+  };
+
+  UI.buildOsu = function () {
+    const c = Bio.cfg.osu;
+    if (!c.username && !c.id) return null;
+    UI.el.osu = igCard('osu', 'osu', 'osu!');
+    UI.renderOsu(Bio.integrations.osu);
+    return UI.el.osu.el;
+  };
+  UI.renderOsu = function (d) {
+    const r = UI.el && UI.el.osu;
+    if (!r) return;
+    if (!d) { r.el.hidden = true; return; }
+    r.el.hidden = false;
+    if (d.avatar) { if (r.img.getAttribute('src') !== d.avatar) r.img.src = safeUrl(d.avatar); } else { r.img.hidden = true; r.img.removeAttribute('src'); }
+    r.link.href = 'https://osu.ppy.sh/users/' + encodeURIComponent(d.id || d.name) + '/' + d.mode;
+    r.name.textContent = '';
+    r.name.append(d.name || 'osu!', d.country ? h('span', { class: 'ig-flag', text: Bio.integrations.flag(d.country), 'data-tip': d.country }) : null);
+    r.sub.textContent = Bio.integrations.MODES[d.mode] + (d.level ? ' · niveau ' + Math.floor(d.level) : '');
+    r.status.dataset.status = 'none';
+    r.stats.textContent = '';
+    if (d.rank) r.stats.append(stat('trophy', '#' + fmtN(d.rank), d.countryRank ? '(' + d.country + ' #' + fmtN(d.countryRank) + ')' : 'mondial'));
+    if (d.pp) r.stats.append(stat('zap', fmtN(d.pp), 'pp'));
+    if (d.accuracy) r.stats.append(stat('check', (Math.round(d.accuracy * 100) / 100).toLocaleString('fr-FR') + ' %', 'précision'));
+    if (d.playcount) r.stats.append(stat('play', fmtN(d.playcount), 'parties'));
+  };
+
+  UI.buildEmbed = function () {
+    const c = Bio.cfg.embed;
+    const e = Bio.integrations.embed(c.url);
+    if (!e) return null;
+    // l'iframe est conservée tant que la source ne change pas (sinon elle rechargerait à chaque frappe dans le dashboard)
+    if (!UI.embedEl || UI.embedEl.dataset.src !== e.src) {
+      const frame = h('iframe', { src: e.src, title: c.title || e.label, loading: 'lazy', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', referrerpolicy: 'strict-origin-when-cross-origin', frameborder: '0' });
+      if (e.ratio) frame.style.aspectRatio = '16 / 9'; else frame.style.height = e.height + 'px';
+      UI.embedEl = h('div', { class: 'em-frame', 'data-src': e.src }, frame);
+    }
+    const head = c.title ? h('div', { class: 'em-head' }, Bio.hasIcon(e.provider) ? Bio.icon(e.provider, 14) : Bio.icon('headphones', 14), h('span', { text: c.title })) : null;
+    return widget('embed', head, UI.embedEl);
+  };
+
   UI.buildLinks = function () {
     const links = Bio.cfg.links || [];
     if (!links.length) return null;
@@ -145,6 +222,9 @@
       about: UI.buildAbout,
       views: UI.buildViews,
       discord: UI.buildDiscord,
+      roblox: UI.buildRoblox,
+      osu: UI.buildOsu,
+      embed: UI.buildEmbed,
       music: () => { UI.playerEl = UI.playerEl || UI.buildPlayer(); return UI.playerEl; },
       links: UI.buildLinks,
     };
@@ -512,6 +592,8 @@
     UI.initTitle();
     setInterval(UI.tickClock, 15000);
     Bio.on('presence', UI.renderPresence);
+    Bio.on('roblox', UI.renderRoblox);
+    Bio.on('osu', UI.renderOsu);
     Bio.on('cfg', UI.onCfg);
     // pas d'écran d'entrée : on affiche directement (sans musique automatique, le navigateur la bloquerait)
     if (!Bio.cfg.splash.enabled || Bio.preview) UI.enter(false);

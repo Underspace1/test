@@ -21,6 +21,9 @@ npx http-server -p 8080 .
 - **À propos** : un court texte libre
 - **Vues** : compteur animé en pastille
 - **Discord** : présence en direct (pseudo, statut, statut perso, jeu ou Spotify) via l'API publique [Lanyard](https://github.com/Phineas/lanyard)
+- **Roblox** : avatar, nom, amis, abonnés, année d'inscription et présence (en ligne / en jeu / Studio) en direct
+- **osu!** : avatar, drapeau, mode, niveau, rang mondial et national, pp, précision, parties jouées
+- **Lecteur intégré** : un lien Spotify, SoundCloud, YouTube, Apple Music ou Deezer devient un lecteur
 - **Musique** : pochette, titre, étiquette (ex. *Explicit*), lecture / précédent / suivant, progression avec temps, volume
 - **Liens** : les gros boutons, chacun dans sa carte
 
@@ -94,6 +97,36 @@ Sans `tracks`, ce sont les ambiances générées qui jouent. Pour des fichiers h
 
 Tant que `demo: true` et sans ID, une fausse activité de démonstration (qui reflète le lecteur) est affichée.
 
+### Roblox
+
+Renseigne ton **ID utilisateur** (dans l'URL de ton profil) ou ton pseudo et active `live`. Les données sont lues via [RoProxy](https://roproxy.com), un miroir public de l'API Roblox qui accepte les requêtes depuis un navigateur. Si la récupération échoue (miroir indisponible, bloqueur), les valeurs saisies (`friends`, `followers`, `displayName`) sont affichées. Tu peux remplacer RoProxy par ton propre proxy CORS avec `roblox.proxy` (préfixe auquel l'URL Roblox est ajoutée).
+
+### osu!
+
+L'API osu! exige un jeton secret qui ne peut pas être exposé dans une page statique. Deux options :
+
+1. **Valeurs saisies** : rang, pp, précision… dans la config (ou le dashboard). L'avatar est automatique si tu donnes ton `id`.
+2. **Endpoint** : un petit service qui renvoie la réponse de `GET /api/v2/users/{id}/{mode}`. Exemple de [Cloudflare Worker](https://workers.cloudflare.com) (crée un client OAuth sur osu.ppy.sh → paramètres → OAuth, puis ajoute `OSU_ID`, `OSU_SECRET` et `OSU_USER` dans les variables du worker) :
+
+```js
+export default {
+  async fetch(req, env) {
+    const tok = await fetch('https://osu.ppy.sh/oauth/token', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ client_id: env.OSU_ID, client_secret: env.OSU_SECRET, grant_type: 'client_credentials', scope: 'public' }),
+    }).then((r) => r.json());
+    const user = await fetch(`https://osu.ppy.sh/api/v2/users/${env.OSU_USER}/osu`, { headers: { Authorization: 'Bearer ' + tok.access_token } }).then((r) => r.json());
+    return new Response(JSON.stringify(user), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } });
+  },
+};
+```
+
+Mets l'URL du worker dans `osu.endpoint`. Un objet simplifié `{ username, id, avatar_url, country_code, global_rank, country_rank, pp, hit_accuracy, play_count, level }` est aussi accepté.
+
+### Lecteur intégré
+
+Colle un lien de partage dans `embed.url` : `https://open.spotify.com/track/…` (ou album, playlist, artiste, podcast), `https://soundcloud.com/…`, `https://youtu.be/…` (ou playlist), `https://music.apple.com/…`, `https://www.deezer.com/…`. Le lien est converti en lecteur intégré ; les liens non reconnus sont ignorés.
+
 ### Compteur de vues
 
 Sans serveur, le compteur est **local** : `base` + 1 par jour et par navigateur. Pour un vrai compteur global, renseigne `views.endpoint` avec l'URL d'un service qui répond `{ "value": 123 }`.
@@ -116,6 +149,7 @@ js/
   background.js    shader WebGL, particules, pluie matrix
   audio.js         synthé génératif + lecteur de fichiers
   presence.js      Discord (Lanyard) + mode démo
+  integrations.js  Roblox (RoProxy), osu! (endpoint), conversion des liens en lecteurs intégrés
   ui.js            widgets, écran d'entrée, lecteur, tilt, curseur, ripple
   overlays.js      palette, terminal, réglages rapides
   main.js          démarrage, réglages, raccourcis, Konami, rave, pont avec l'aperçu

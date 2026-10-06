@@ -43,6 +43,7 @@
       Bio.player.init(cfg);
     }
     if (JSON.stringify(prev.discord) !== JSON.stringify(cfg.discord)) Bio.presence.init(cfg);
+    if (JSON.stringify([prev.roblox, prev.osu]) !== JSON.stringify([cfg.roblox, cfg.osu])) Bio.integrations.init(cfg);
     Bio.ui.renderPresence(Bio.presence.data);
     document.title = cfg.pageTitle || '@' + cfg.username;
     Bio.emit('config');
@@ -122,6 +123,8 @@
     toggleCfg('decor.dots', 'Trame de points');
     toggleCfg('background.mono', 'Fond noir & blanc');
 
+    if (cfg.roblox.id || cfg.roblox.username) A({ group: 'Liens', title: 'Profil Roblox', icon: 'roblox', keywords: 'jeu', run: () => { const d = Bio.integrations.roblox || {}; openUrl(d.id ? 'https://www.roblox.com/users/' + d.id + '/profile' : 'https://www.roblox.com/search/users?keyword=' + encodeURIComponent(d.name || '')); } });
+    if (cfg.osu.username || cfg.osu.id) A({ group: 'Liens', title: 'Profil osu!', icon: 'osu', keywords: 'rythme', run: () => { const d = Bio.integrations.osu || {}; openUrl('https://osu.ppy.sh/users/' + encodeURIComponent(d.id || d.name || '') + '/' + (d.mode || 'osu')); } });
     A({ group: 'Page', title: 'Copier le lien de la page', icon: 'share', keywords: 'partager url', run: async () => { const ok = await U.copy(location.href.split('#')[0].split('?')[0]); U.toast(ok ? 'Lien copié' : 'Copie impossible', ok ? 'check' : 'close'); } });
     if (!Bio.preview) A({ group: 'Page', title: 'Ouvrir le dashboard (éditeur complet)', icon: 'layers', keywords: 'config éditeur personnaliser', run: () => window.open('dashboard.html', '_blank', 'noopener') });
     if (cfg.studio) A({ group: 'Page', title: 'Réglages rapides', icon: 'sliders', keywords: 'studio éditeur', run: () => Bio.overlays.open('studio') });
@@ -215,6 +218,7 @@
     Bio.player.init(cfg);
     Bio.ui.init();
     Bio.presence.init(cfg);
+    Bio.integrations.init(cfg);
     Bio.overlays.init();
     registerActions();
     Bio.on('config', registerActions);

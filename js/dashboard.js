@@ -90,7 +90,7 @@
   }
 
   F.text = (f) => {
-    const i = h('input', { class: 'in' + (f.mono ? ' mono' : ''), type: f.inputType || 'text', placeholder: f.placeholder || '', value: get(f.path) == null ? '' : get(f.path), spellcheck: 'false', 'data-path': f.path });
+    const i = h('input', { class: 'in' + (f.mono ? ' mono' : ''), type: f.inputType || 'text', placeholder: f.placeholder || '', value: get(f.path) == null ? '' : get(f.path), spellcheck: 'false', 'data-path': f.path, step: f.step });
     i.addEventListener('input', () => set(f.path, f.number ? (i.value === '' ? 0 : Number(i.value)) : i.value));
     D.syncs.push(() => { if (document.activeElement !== i) i.value = get(f.path) == null ? '' : get(f.path); });
     const wrap = f.prefix ? h('div', { class: 'in-wrap' }, h('span', { class: 'prefix', text: f.prefix }), i) : i;
@@ -512,6 +512,37 @@
       { type: 'toggle', path: 'discord.useAvatar', label: 'Utiliser l’avatar Discord', hint: 'Remplace ton avatar par celui de Discord' },
       { type: 'text', path: 'discord.tag', label: 'Pseudo Discord', hint: 'Affiché dans le widget (sans Lanyard) et copié au clic sur l’icône Discord' },
     ] }] },
+    { id: 'integrations', icon: 'gamepad', title: 'Intégrations', desc: 'Roblox, osu!, lecteur intégré', groups: [
+      { title: 'Roblox', fields: [
+        { type: 'note', content: () => h('span', {}, 'Avec ton ID (ou ton pseudo) et « En direct » activé, les amis, abonnés, l’avatar et la présence sont récupérés via ', h('a', { href: 'https://roproxy.com', target: '_blank', rel: 'noopener', text: 'RoProxy' }), ' (miroir public de l’API Roblox). Les valeurs saisies servent de repli si la récupération échoue.') },
+        { type: 'text', path: 'roblox.id', label: 'ID utilisateur', placeholder: '156', mono: true, hint: 'Dans l’URL de ton profil : roblox.com/users/ID/profile' },
+        { type: 'text', path: 'roblox.username', label: 'Pseudo', placeholder: 'builderman' },
+        { type: 'text', path: 'roblox.displayName', label: 'Nom affiché' },
+        { type: 'toggle', path: 'roblox.live', label: 'En direct', hint: 'Récupère les données en direct (sinon valeurs ci-dessous)' },
+        { type: 'number', path: 'roblox.friends', label: 'Amis' },
+        { type: 'number', path: 'roblox.followers', label: 'Abonnés' },
+        { type: 'text', path: 'roblox.proxy', label: 'Proxy CORS', placeholder: 'https://mon-proxy.workers.dev/?', mono: true, hint: 'Optionnel : remplace RoProxy par ton propre proxy (préfixe + URL)' },
+      ] },
+      { title: 'osu!', fields: [
+        { type: 'note', content: () => h('span', {}, 'L’API osu! exige un jeton secret : fournis un ', h('b', { text: 'endpoint' }), ' (ex. un Cloudflare Worker, modèle dans le README) qui renvoie la réponse de ', h('code', { text: 'GET /api/v2/users/{id}/{mode}' }), '. Sans endpoint, les valeurs saisies sont affichées.') },
+        { type: 'text', path: 'osu.username', label: 'Pseudo' },
+        { type: 'text', path: 'osu.id', label: 'ID utilisateur', placeholder: '2', mono: true, hint: 'Avatar automatique via a.ppy.sh' },
+        { type: 'seg', path: 'osu.mode', label: 'Mode', options: [['osu', 'standard'], ['taiko', 'taiko'], ['fruits', 'catch'], ['mania', 'mania']] },
+        { type: 'text', path: 'osu.country', label: 'Pays', placeholder: 'FR', mono: true, hint: 'Code à 2 lettres → drapeau' },
+        { type: 'number', path: 'osu.rank', label: 'Rang mondial' },
+        { type: 'number', path: 'osu.countryRank', label: 'Rang national' },
+        { type: 'number', path: 'osu.pp', label: 'pp' },
+        { type: 'number', path: 'osu.accuracy', label: 'Précision (%)', step: 'any' },
+        { type: 'number', path: 'osu.playcount', label: 'Parties jouées' },
+        { type: 'number', path: 'osu.level', label: 'Niveau' },
+        { type: 'text', path: 'osu.endpoint', label: 'Endpoint', placeholder: 'https://osu.mon-worker.workers.dev/', mono: true },
+      ] },
+      { title: 'Lecteur intégré', fields: [
+        { type: 'note', content: () => h('span', {}, 'Colle un lien de partage ', h('b', { text: 'Spotify' }), ' (titre, album, playlist, artiste, podcast), ', h('b', { text: 'SoundCloud' }), ', ', h('b', { text: 'YouTube' }), ' (vidéo ou playlist), ', h('b', { text: 'Apple Music' }), ' ou ', h('b', { text: 'Deezer' }), ' : il devient un lecteur dans un widget.') },
+        { type: 'text', path: 'embed.url', label: 'Lien', placeholder: 'https://open.spotify.com/track/…', mono: true },
+        { type: 'text', path: 'embed.title', label: 'Titre du widget', placeholder: 'En écoute en ce moment', hint: 'Optionnel' },
+      ] },
+    ] },
     { id: 'avance', icon: 'cpu', title: 'Avancé', desc: 'Compteur, extras', groups: [
       { title: 'Compteur de vues', fields: [
         { type: 'number', path: 'views.base', label: 'Valeur de départ' },

@@ -24,7 +24,7 @@ window.BIO_CONFIG = {
   /* ---------- disposition ----------
      L'ordre des widgets sur la page. Retire-en un pour le masquer.
      Disponibles : 'profile' 'about' 'views' 'discord' 'music' 'links'       */
-  layout: ['profile', 'about', 'views', 'discord', 'music', 'links'],
+  layout: ['profile', 'about', 'views', 'discord', 'roblox', 'osu', 'embed', 'music', 'links'],
   socialsLimit: 5,                  // icônes de réseaux visibles avant le bouton « + » (0 = toutes)
 
   /* ---------- style ----------
@@ -98,6 +98,44 @@ window.BIO_CONFIG = {
     useAvatar: false,               // true = utilise ton avatar Discord à la place du tien
     tag: 'nova',                    // pseudo affiché dans le widget et copié au clic sur l'icône Discord
   },
+
+  /* ---------- Roblox ----------
+     Mets ton ID utilisateur (ou ton pseudo) : les amis, abonnés, l'avatar et la
+     présence sont récupérés en direct via RoProxy (miroir public de l'API Roblox).
+     Si la récupération échoue, les valeurs ci-dessous sont affichées.
+     proxy : optionnel, un proxy CORS maison (ex. 'https://mon-proxy.workers.dev/?')  */
+  roblox: {
+    id: '',                         // ex. '156'
+    username: 'nova',
+    displayName: 'Nova',
+    friends: 291,
+    followers: 60,
+    live: false,                    // passe à true avec ton vrai ID / pseudo
+    proxy: '',
+  },
+
+  /* ---------- osu! ----------
+     L'API osu! exige un jeton : fournis un endpoint (ex. un Cloudflare Worker, voir README)
+     qui renvoie la réponse de GET /api/v2/users/{id}/{mode}. Sans endpoint, les
+     valeurs ci-dessous sont affichées. mode : 'osu' | 'taiko' | 'fruits' | 'mania'  */
+  osu: {
+    username: 'nova',
+    id: '',                         // ex. '2' → avatar automatique
+    mode: 'osu',
+    country: 'FR',
+    rank: 48213,
+    countryRank: 1120,
+    pp: 4210,
+    accuracy: 98.12,
+    playcount: 52310,
+    level: 97,
+    endpoint: '',
+  },
+
+  /* ---------- lecteur intégré ----------
+     Colle un lien de partage Spotify (titre, album, playlist…), SoundCloud, YouTube,
+     Apple Music ou Deezer : il est converti en lecteur intégré.                 */
+  embed: { url: '', title: '' },
 
   /* ---------- compteur de vues ----------
      base : valeur de départ. endpoint : URL optionnelle d'un compteur global

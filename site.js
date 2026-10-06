@@ -26,7 +26,7 @@ window.BIO_SITE = {
   "hero": {
     "badge": "Rejoins les créateurs qui publient avec Arcturus",
     "title": "Ton profil. Ton style.",
-    "subtitle": "Une page de bio en verre sombre, avec Discord, Roblox, osu! et ta musique en direct. Tout se règle dans un dashboard visuel, sans coder. Statique, sans compte, hébergée où tu veux.",
+    "subtitle": "Une page de bio en verre sombre, avec Discord, Roblox, osu! et ta musique en direct. Tout se règle dans un dashboard visuel, sans coder, et s’héberge où tu veux.",
     "primaryCta": "Créer ma page",
     "secondaryCta": "Voir la démo",
     "hint": "Statique · sans compte · gratuit pour commencer"
@@ -35,7 +35,7 @@ window.BIO_SITE = {
     {
       "id": "personnalisation",
       "title": "Chaque détail se règle",
-      "subtitle": "Fond, cartes, couleurs, polices, effets : rien n’est imposé, tout s’ajuste depuis le dashboard.",
+      "subtitle": "Fond, cartes, couleurs, polices, effets : rien n’est imposé, tout s’ajuste depuis le dashboard.",
       "items": [
         {
           "title": "Fonds animés",
@@ -44,7 +44,7 @@ window.BIO_SITE = {
         },
         {
           "title": "Cartes en verre",
-          "text": "Verre sombre, plein, contour ou néon ; opacité, flou et arrondi réglables, bordure projecteur ou anneau animé.",
+          "text": "Verre sombre, plein, contour ou néon ; opacité, flou et arrondi réglables, bordure projecteur ou anneau animé.",
           "icon": "layers"
         },
         {
@@ -59,12 +59,12 @@ window.BIO_SITE = {
         },
         {
           "title": "Sept modèles",
-          "text": "Minimal, Nébuleuse, Aurore, Synthwave, Sobre, Sakura, Luxe : un clic change le style, tes textes et tes liens restent.",
+          "text": "Minimal, Nébuleuse, Aurore, Synthwave, Sobre, Sakura, Luxe : un clic change le style, tes textes et tes liens restent.",
           "icon": "wand"
         },
         {
           "title": "Particules et interactions",
-          "text": "Neige, lucioles, étoiles filantes, bokeh, pluie ; inclinaison 3D, halo du curseur, onde au clic.",
+          "text": "Neige, lucioles, étoiles, étoiles filantes, bokeh, pluie ; inclinaison 3D, halo du curseur, onde au clic.",
           "icon": "sparkles"
         }
       ],
@@ -103,7 +103,7 @@ window.BIO_SITE = {
         },
         {
           "title": "Liens et réseaux",
-          "text": "Des gros boutons avec sous-titre, vingt icônes de marques et la copie de ton tag Discord au clic.",
+          "text": "Des gros boutons avec sous-titre et étiquette, vingt-deux icônes de marques et la copie de ton tag Discord au clic.",
           "icon": "link"
         }
       ],
@@ -120,13 +120,13 @@ window.BIO_SITE = {
           "icon": "monitor"
         },
         {
-          "title": "Disposition par glisser-déposer",
-          "text": "Active, masque et réordonne les neuf widgets ; duplique, déplace ou supprime tes liens et réseaux.",
+          "title": "Disposition en un clic",
+          "text": "Active, masque et réordonne les neuf widgets ; glisse-dépose, duplique ou supprime tes liens et réseaux.",
           "icon": "layers"
         },
         {
           "title": "Export en un clic",
-          "text": "Copie ou télécharge config.js avec Ctrl+S et remplace le fichier du site : aucun build, aucun serveur.",
+          "text": "Copie ou télécharge config.js avec Ctrl+S et remplace le fichier du site : aucun build, aucun serveur.",
           "icon": "code"
         },
         {
@@ -149,17 +149,17 @@ window.BIO_SITE = {
       "items": [
         {
           "title": "Héberge où tu veux",
-          "text": "GitHub Pages, Netlify, Vercel, Cloudflare Pages ou ton serveur : tu déposes le dossier tel quel, sans build.",
+          "text": "GitHub Pages, Netlify, Vercel, Cloudflare Pages ou ton serveur : tu déposes le dossier tel quel, sans build.",
           "icon": "globe"
         },
         {
           "title": "Tes données restent chez toi",
-          "text": "Pas de compte ni de base : tout vit dans config.js, et les données externes sont insérées en texte brut, jamais en HTML.",
+          "text": "Pas de compte ni de base : tout vit dans config.js, et les données externes sont insérées en texte brut, jamais en HTML.",
           "icon": "lock"
         },
         {
           "title": "Paiement par lien hébergé",
-          "text": "Stripe Payment Link, Ko-fi ou PayPal : tu paies sur leur page, puis tu déclares ton plan dans le dashboard.",
+          "text": "Stripe Payment Link, Ko-fi ou PayPal : tu paies sur leur page, puis tu déclares ton plan dans le dashboard.",
           "icon": "crown"
         },
         {
@@ -173,7 +173,7 @@ window.BIO_SITE = {
   ],
   "pricing": {
     "title": "Un prix simple, sans surprise",
-    "subtitle": "Commence gratuitement. Le plan se déclare dans config.js et le paiement passe par un lien hébergé : rien à installer, rien à connecter.",
+    "subtitle": "Commence gratuitement. Le plan se déclare dans config.js et le paiement passe par un lien hébergé : rien à installer, rien à connecter.",
     "yearlyNote": "2 mois offerts",
     "tiers": [
       {
@@ -184,7 +184,7 @@ window.BIO_SITE = {
         "tagline": "Tout pour publier ta page aujourd’hui.",
         "features": [
           "Profil, à propos, vues, Discord en direct, musique générée et liens",
-          "Jusqu’à 5 liens ; réseaux et badges sans limite",
+          "Jusqu’à 5 liens ; réseaux et badges sans limite",
           "Fonds fluide WebGL, aurore, grille et image",
           "9 thèmes, 3 polices, 7 modèles",
           "Dashboard complet avec aperçu en direct",
@@ -229,35 +229,36 @@ window.BIO_SITE = {
         "highlight": false
       }
     ],
-    "note": "Le plan est déclaratif : Arcturus ne vérifie aucun paiement, config.js fait foi. Les abonnements financent le développement, le support et les prochains widgets.",
+    "note": "Le plan est déclaratif : Arcturus ne vérifie aucun paiement, config.js fait foi.",
     "fallbackUrl": ""
   },
   "faqTitle": "Questions fréquentes",
+  "featuresTitle": "Tout ce qui est inclus, du premier pixel au dernier widget",
   "faq": [
     {
-      "q": "Comment fonctionne le paiement sans serveur ?",
-      "a": "Arcturus n’a ni compte ni backend. Le bouton d’un plan ouvre un lien de paiement hébergé (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans config.js, dans premium.checkout. Une fois payé, tu ouvres le dashboard, section Abonnement, tu sélectionnes ton plan et tu télécharges config.js : les fonctions se débloquent sur ta page."
+      "q": "Comment fonctionne le paiement sans serveur ?",
+      "a": "Arcturus n’a ni compte ni backend. Le bouton d’un plan ouvre un lien de paiement hébergé (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans config.js, dans premium.checkout. Une fois payé, tu ouvres le dashboard, section Abonnement, tu sélectionnes ton plan et tu télécharges config.js : les fonctions se débloquent sur ta page."
     },
     {
-      "q": "Le plan est-il vérifié quelque part ?",
-      "a": "Non. Le site est statique, donc le plan est déclaratif : tu paies, tu déclares premium.plan dans config.js, la page et le dashboard lisent cette déclaration. C’est le même principe qu’une licence, fondé sur la confiance. Les abonnements financent le développement, le support et les prochains widgets."
+      "q": "Le plan est-il vérifié quelque part ?",
+      "a": "Non. Le site est statique, donc le plan est déclaratif : tu paies, tu déclares premium.plan dans config.js, la page et le dashboard lisent cette déclaration. C’est le même principe qu’une licence, fondé sur la confiance. Les abonnements financent le développement, le support et les prochains widgets."
     },
     {
-      "q": "Que se passe-t-il si un réglage dépasse mon plan ?",
-      "a": "Rien ne casse. La page applique un repli : fond fluide à la place de la vidéo, police Inter, particules désactivées, les cinq premiers liens, etc. Dans le dashboard, le réglage porte l’étiquette du plan requis, mais ta valeur reste dans config.js et se réactive dès que tu passes au plan supérieur."
+      "q": "Que se passe-t-il si un réglage dépasse mon plan ?",
+      "a": "Rien ne casse. La page applique un repli : fond fluide à la place de la vidéo, police Inter, particules désactivées, les cinq premiers liens, etc. Dans le dashboard, le réglage porte l’étiquette du plan requis, mais ta valeur reste dans config.js et se réactive dès que tu passes au plan supérieur."
     },
     {
-      "q": "Comment changer de plan ou arrêter ?",
-      "a": "L’abonnement se gère chez le prestataire de paiement, depuis le reçu ou son portail client. Pour monter de niveau, déclare le nouveau plan dans le dashboard et exporte config.js. Si tu arrêtes, repasse sur Gratuit : ta page reste en ligne avec les replis, rien n’est supprimé."
+      "q": "Comment changer de plan ou arrêter ?",
+      "a": "L’abonnement se gère chez le prestataire de paiement, depuis le reçu ou son portail client. Pour monter de niveau, déclare le nouveau plan dans le dashboard et exporte config.js. Si tu arrêtes, repasse sur Gratuit : ta page reste en ligne avec les replis, rien n’est supprimé."
     },
     {
-      "q": "Où héberger ma page, et que deviennent les données ?",
-      "a": "GitHub Pages, Netlify, Vercel, Cloudflare Pages ou n’importe quel hébergeur de fichiers : tu déposes le dossier tel quel. Les intégrations (Discord via Lanyard, Roblox via RoProxy, osu! via ton endpoint) sont appelées depuis le navigateur du visiteur ; le compteur de vues est local sauf si tu fournis un endpoint. Tu peux retirer dashboard.html du déploiement et brancher ton propre domaine chez l’hébergeur."
+      "q": "Où héberger ma page, et que deviennent les données ?",
+      "a": "GitHub Pages, Netlify, Vercel, Cloudflare Pages ou n’importe quel hébergeur de fichiers : tu déposes le dossier tel quel. Les intégrations (Discord via Lanyard, Roblox via RoProxy, osu! via ton endpoint) sont appelées depuis le navigateur du visiteur ; le compteur de vues est local sauf si tu fournis un endpoint. Tu peux retirer dashboard.html du déploiement et brancher ton propre domaine chez l’hébergeur."
     }
   ],
   "final": {
     "title": "Tout gravite autour de toi.",
-    "text": "Ouvre le dashboard, règle ta page en regardant l’aperçu, télécharge config.js. Rien d’autre à installer : ta page, et tout ce qui brille autour.",
+    "text": "Ouvre le dashboard, règle ta page en regardant l’aperçu, télécharge config.js. Rien d’autre à installer : ta page, et tout ce qui brille autour.",
     "cta": "Créer ma page",
     "secondary": "Voir la démo"
   }

@@ -15,7 +15,7 @@
   --panel2: #141418;
   --text: #F4F2EE;
   --muted: #A3A09A;
-  --faint: rgb(163 160 154 / .62);
+  --faint: rgb(163 160 154 / .8);
   --line: rgb(255 255 255 / .08);
   --line2: rgb(255 255 255 / .14);
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -94,10 +94,11 @@ textarea.in.mono { font: 12.5px/1.6 var(--mono); }
 
 /* abonnement */
 .f-lt { display: inline-flex; align-items: center; gap: 8px; }
-.lock { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: #000; background: #fff; }
+.lock { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; font: 600 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: #140B04; background: #fff; }
 .lock[data-min="vip"] { background: var(--vip); }
 .lock[data-min="premium"] { background: var(--accent); color: var(--accent-text); }
-.field.locked .f-ctl { opacity: .45; pointer-events: none; }
+.field.locked .f-ctl { opacity: .55; }
+.field.locked .f-ctl :disabled { cursor: not-allowed; }
 .field.fallback > label .lock, .field.fallback > .f-label .lock { box-shadow: 0 0 0 3px rgb(251 191 36 / .25); }
 .opt-locked { position: relative; opacity: .5; }
 .opt-locked:disabled { cursor: not-allowed; }

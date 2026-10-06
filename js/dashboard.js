@@ -27,10 +27,11 @@
     status.dataset.state = D.dirty ? 'dirty' : 'ok';
     status.querySelector('.txt').textContent = D.dirty ? 'Brouillon non exporté' : 'Identique à config.js';
   };
+  let lastFallbacks = '';
   function set(path, val, opts = {}) {
     U.setPath(D.cfg, path, val);
-    const g = Bio.gateFor(path);
-    if (g && !Bio.allows(D.cfg.premium.plan, g.min) && g.test(val, D.cfg)) { setTimeout(enforce, 0); }
+    const fb = Bio.fallbacks(D.cfg).join(',');
+    if (fb !== lastFallbacks) { lastFallbacks = fb; if (fb && (Bio.gateFor(path) || path === 'premium.plan')) setTimeout(enforce, 0); }
     D.dirty = true;
     setStatus();
     saveDraft();
@@ -45,6 +46,9 @@
     saveDraft();
     pushPreview();
     syncAll();
+    const fb = Bio.fallbacks(D.cfg);
+    lastFallbacks = fb.join(',');
+    if (fb.length) U.toast(fb.length + ' réglage' + (fb.length > 1 ? 's' : '') + ' réservé' + (fb.length > 1 ? 's' : '') + ' au plan supérieur — repli dans l’aperçu', 'lock');
   }
 
   /* ------------------------------------------------------------ aperçu */
@@ -79,9 +83,14 @@
   $('#pv-reload').append(Bio.icon('reset', 15));
   $('#pv-reload').addEventListener('click', () => { D.ready = false; iframe.src = 'profile.html?preview=1&t=' + Date.now(); });
   $('#pv-close').append(Bio.icon('close', 16));
-  $('#pv-close').addEventListener('click', () => preview.classList.remove('show'));
+  const tellVisible = (v) => { try { iframe.contentWindow.postMessage({ type: 'bio:visible', visible: v }, '*'); } catch (e) { /* ignore */ } };
+  $('#pv-close').addEventListener('click', () => { preview.classList.remove('show'); tellVisible(false); });
   $('#pv-fab').prepend(Bio.icon('eye', 16));
-  $('#pv-fab').addEventListener('click', () => { preview.classList.add('show'); setTimeout(fitPreview, 50); });
+  $('#pv-fab').addEventListener('click', () => { preview.classList.add('show'); setTimeout(fitPreview, 50); tellVisible(true); });
+  const mobileMq = matchMedia('(max-width: 980px)');
+  const syncVisible = () => tellVisible(!mobileMq.matches || preview.classList.contains('show'));
+  mobileMq.addEventListener('change', syncVisible);
+  addEventListener('message', (e) => { if (e.source === iframe.contentWindow && e.data && e.data.type === 'bio:ready') syncVisible(); });
 
   /* ------------------------------------------------------------ champs */
   const F = {};
@@ -103,6 +112,7 @@
         const locked = Bio.locked(D.cfg, opts.path);
         el.classList.toggle('gated', locked);
         el.classList.toggle('locked', locked && !opts.partial);
+        if (!opts.partial) el.querySelectorAll('.f-ctl input, .f-ctl button, .f-ctl textarea, .f-ctl select').forEach((c) => { c.disabled = locked; c.setAttribute('aria-disabled', locked ? 'true' : 'false'); });
         el.classList.toggle('fallback', locked && gate.test(U.getPath(D.cfg, opts.path), D.cfg));
         lockTag.hidden = !locked;
       };
@@ -278,7 +288,7 @@
           h('span', { class: 'plan-h' }, h('b', { text: p.label }), p.icon ? Bio.icon(p.icon, 15) : null),
           h('span', { class: 'plan-p', text: t.priceMonth ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(t.priceMonth) + ' / mois' : 'Gratuit' }),
           h('span', { class: 'plan-t', text: t.tagline || '' }));
-        b.addEventListener('click', () => { set('premium.plan', id, { sync: true }); setTimeout(enforce, 0); });
+        b.addEventListener('click', () => { set('premium.plan', id, { sync: true }); });
         wrap.append(b);
       });
       gatesList.textContent = '';
@@ -399,11 +409,11 @@
     const render = () => {
       list.textContent = '';
       const arr = items();
-      if (!arr.length) { list.append(h('div', { class: 'list-empty', text: f.empty || 'Rien pour l’instant.' })); return; }
       const gate = Bio.gateFor(f.path);
       const limit = gate && gate.limit && Bio.locked(D.cfg, f.path) ? gate.limit : Infinity;
       add.disabled = arr.length >= limit;
       add.title = add.disabled ? 'Plus de ' + limit + ' liens : plan ' + Bio.plans[gate.min].label : '';
+      if (!arr.length) { list.append(h('div', { class: 'list-empty', text: f.empty || 'Rien pour l’instant.' })); return; }
       arr.forEach((item, idx) => {
         const title = h('span', { class: 'title' });
         const paintTitle = () => {
@@ -454,7 +464,7 @@
       });
     };
     add.addEventListener('click', () => { items().push(f.make()); commit(); render(); list.lastChild.querySelector('input') && list.lastChild.querySelector('input').focus(); });
-    D.syncs.push(render);
+    D.syncs.push(() => { if (!list.contains(document.activeElement)) render(); });
     render();
     return field(f.label, h('div', { class: 'f-ctl col', style: { gap: '12px', alignItems: 'stretch' } }, list, add), Object.assign({ stack: true, partial: !!(Bio.gateFor(f.path) && Bio.gateFor(f.path).limit) }, f));
   };
@@ -757,18 +767,24 @@
   $('#imp-cancel').addEventListener('click', closeImport);
   $('.modal-backdrop', modal).addEventListener('click', closeImport);
   $('#imp-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) f.text().then((t) => { impText.value = t; }); });
-  $('#imp-ok').addEventListener('click', () => {
+  // config.js est du JavaScript : on l'exécute dans une iframe sandbox (origine opaque, sans accès au dashboard)
+  function parseConfig(code) {
+    return new Promise((resolve) => {
+      try { return resolve(JSON.parse(code)); } catch (e) { /* pas du JSON : on passe par la sandbox */ }
+      const fr = h('iframe', { sandbox: 'allow-scripts', style: { display: 'none' } });
+      const done = (v) => { clearTimeout(t); removeEventListener('message', onMsg); fr.remove(); resolve(v); };
+      const onMsg = (e) => { if (e.source !== fr.contentWindow) return; let v = null; try { v = e.data && e.data.ok ? JSON.parse(e.data.json) : null; } catch (err) { v = null; } done(v); };
+      const t = setTimeout(() => done(null), 3000);
+      addEventListener('message', onMsg);
+      fr.srcdoc = '<script>addEventListener("message",function(e){var w={};var out={ok:false};try{new Function("window","self","globalThis","document",e.data)(w,w,w,undefined);out={ok:true,json:JSON.stringify(w.BIO_CONFIG)};}catch(err){}e.source.postMessage(out,"*");});<\/script>';
+      fr.addEventListener('load', () => { try { fr.contentWindow.postMessage(code, '*'); } catch (err) { done(null); } });
+      document.body.append(fr);
+    });
+  }
+  $('#imp-ok').addEventListener('click', async () => {
     const code = impText.value.trim();
     if (!code) return;
-    let parsed = null;
-    try { parsed = JSON.parse(code); } catch (e) {
-      try {
-        // config.js est du JavaScript : on l'exécute avec un faux "window" pour en extraire BIO_CONFIG
-        const fake = {};
-        new Function('window', 'self', 'globalThis', 'document', code)(fake, fake, fake, undefined);
-        parsed = fake.BIO_CONFIG;
-      } catch (err) { parsed = null; }
-    }
+    const parsed = await parseConfig(code);
     if (!parsed || typeof parsed !== 'object') { U.toast('Impossible de lire cette configuration', 'close'); return; }
     replaceConfig(parsed);
     closeImport();

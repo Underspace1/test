@@ -64,6 +64,9 @@
     addEventListener('resize', fit);
     addEventListener('load', fit);
     requestAnimationFrame(fit);
+    // le profil met son rendu en pause quand le téléphone sort de l'écran (WebGL + boucle d'animation)
+    const vis = new IntersectionObserver((en) => { try { frame.contentWindow.postMessage({ type: 'bio:visible', visible: en[0].isIntersecting }, '*'); } catch (e) { /* ignore */ } }, { threshold: 0.05 });
+    vis.observe(phone);
     return h('div', { class: 'showcase' }, dash, phone);
   }
 
@@ -83,7 +86,7 @@
     const dots = h('div', { class: 'story-dots', role: 'tablist', 'aria-label': 'Diapositives' });
     const bar = h('div', { class: 'story-bar' }, h('i'));
     const els = slides.map((sl, i) => {
-      const el = h('article', { class: 'slide', 'data-i': i, id: sl.id, 'aria-hidden': i === 0 ? 'false' : 'true' },
+      const el = h('article', { class: 'slide', 'data-i': i, id: sl.id },
         h('div', { class: 'slide-text' },
           h('p', { class: 'k' }, h('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), sl.kicker),
           h('h2', { text: sl.title }), h('p', { class: 'lead', text: sl.text }),
@@ -104,7 +107,6 @@
         el.classList.toggle('is-active', i === idx);
         el.classList.toggle('is-prev', i < idx);
         el.classList.toggle('is-next', i > idx);
-        el.setAttribute('aria-hidden', i === idx ? 'false' : 'true');
         if (i === idx) el.style.setProperty('--local', local.toFixed(3));
       });
       if (idx !== current) { current = idx; dots.querySelectorAll('button').forEach((d, i) => d.setAttribute('aria-selected', i === idx ? 'true' : 'false')); }
@@ -113,7 +115,7 @@
     };
     const pinned = () => matchMedia('(min-width: 701px) and (min-height: 560px) and (prefers-reduced-motion: no-preference)').matches;
     const update = () => {
-      if (!pinned()) { story.classList.add('flat'); els.forEach((el) => { el.classList.add('is-active'); el.classList.remove('is-prev', 'is-next'); el.setAttribute('aria-hidden', 'false'); }); return; }
+      if (!pinned()) { story.classList.add('flat'); els.forEach((el) => { el.classList.add('is-active'); el.classList.remove('is-prev', 'is-next'); }); return; }
       story.classList.remove('flat');
       const top = story.getBoundingClientRect().top + scrollY;
       const span = story.offsetHeight - innerHeight;
@@ -212,8 +214,13 @@
       const per = isFree ? '' : yearly ? '/an' : '/mois';
       const note = isFree ? (t.freeNote || 'pour toujours') : yearly ? 'soit ' + fmtEur(Math.round((t.priceYear / 12) * 100) / 100) + ' par mois' : 'ou ' + fmtEur(t.priceYear) + ' par an';
       const current = t.id === plan;
-      let href = 'dashboard.html', label = t.cta;
-      if (!isFree) { href = checkout[t.id] || pr.fallbackUrl || 'dashboard.html#s-abonnement'; }
+      let href = 'dashboard.html', label = t.cta, external = false, unavailable = false;
+      if (!isFree) {
+        const raw = String(checkout[t.id] || pr.fallbackUrl || '').trim();
+        if (/^https:\/\//i.test(raw)) { href = U.safeUrl(raw); external = true; }
+        else { href = 'dashboard.html#s-abonnement'; unavailable = true; label = 'Lien de paiement à configurer'; }
+      }
+      if (current && !isFree) { href = 'dashboard.html#s-abonnement'; external = false; unavailable = false; label = 'Gérer mon abonnement'; }
       const card = h('article', { class: 'tier reveal' + (t.highlight ? ' hl' : ''), 'data-tier': t.id },
         t.highlight ? h('span', { class: 'ribbon', text: t.ribbon || 'Le plus choisi' }) : null,
         h('div', { class: 't-head' }, h('h3', {}, t.name), h('span', { class: 't-badge' }, Bio.icon(t.icon || TIER_ICON[t.id] || 'star', 15))),
@@ -221,7 +228,7 @@
         h('div', { class: 'price' }, h('b', { text: fmtEur(price || 0) }), per ? h('span', { text: per }) : null, h('small', { text: note })),
         h('ul', {}, (t.features || []).map((f) => h('li', {}, Bio.icon('check', 15), h('span', { text: f })))),
         current ? h('p', { class: 'current', text: 'Ton plan actuel' }) : null,
-        h('a', { class: 'btn cta block' + (t.highlight ? ' primary' : ''), href, target: /^https?:/.test(href) ? '_blank' : null, rel: /^https?:/.test(href) ? 'noopener noreferrer' : null, text: current && !isFree ? 'Gérer mon abonnement' : label }));
+        h('a', { class: 'btn cta block' + (t.highlight && !unavailable ? ' primary' : '') + (unavailable ? ' unavailable' : ''), href, target: external ? '_blank' : null, rel: external ? 'noopener noreferrer' : null, title: unavailable ? 'Le propriétaire n’a pas encore renseigné de lien de paiement (dashboard → Abonnement).' : null, text: label }));
       tiersEl.append(card);
     });
     setTimeout(() => Array.from(tiersEl.children).forEach((c) => c.classList.add('in')), 20);

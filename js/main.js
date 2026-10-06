@@ -19,20 +19,24 @@
   ];
 
   Bio.set = function (path, val, persist) {
-    if (!EDITABLE.includes(path)) return;
-    if (Bio.enums[path] && !Bio.enums[path].includes(val)) return;
+    if (!EDITABLE.includes(path)) return false;
+    if (Bio.enums[path] && !Bio.enums[path].includes(val)) return false;
+    if (Bio.lockedOption(Bio.cfg, path, val)) { U.toast('Réservé au plan ' + Bio.plans[Bio.gateFor(path).min].label, 'lock'); return false; }
     U.setPath(Bio.cfg, path, val);
+    if (Bio.declared) U.setPath(Bio.declared, path, val);
     if (persist && !Bio.preview) {
       Bio.overrides[path] = val;
       store.set('overrides', Bio.overrides);
     }
     if (path === 'theme' || path === 'accent' || path === 'accent2') { if (!Bio.rave.on) Bio.applyTheme(Bio.cfg); }
     Bio.emit('cfg', path);
+    return true;
   };
 
   /* Remplace toute la configuration (utilisé par l'aperçu du dashboard) */
   Bio.applyConfig = function (raw) {
     const prev = Bio.cfg;
+    Bio.declared = Bio.normalize(raw, { enforce: false });
     const cfg = Bio.normalize(raw);
     Bio.cfg = cfg;
     if (!Bio.rave.on) Bio.applyTheme(cfg);
@@ -50,7 +54,7 @@
     Bio.emit('config');
   };
 
-  Bio.exportConfig = function () { return Bio.serialize(Bio.cfg); };
+  Bio.exportConfig = function () { return Bio.serialize(Bio.declared || Bio.cfg); };
   Bio.resetOverrides = function () {
     store.del('overrides');
     location.reload();
@@ -146,8 +150,9 @@
       else Bio.set(path, v, true);
     });
     flat(p.cfg);
-    Bio.applyConfig(Bio.cfg);
-    U.toast('Modèle « ' + p.label + ' » appliqué', 'layers');
+    Bio.applyConfig(Bio.declared || Bio.cfg);
+    const fb = Bio.cfg.locked || [];
+    U.toast('Modèle « ' + p.label + ' » appliqué' + (fb.length ? ' — ' + fb.length + ' réglage' + (fb.length > 1 ? 's' : '') + ' réservé' + (fb.length > 1 ? 's' : '') + ' au plan supérieur' : ''), fb.length ? 'lock' : 'layers');
   };
 
   /* ------------------------------------------------------------ raccourcis */
@@ -192,9 +197,12 @@
     document.documentElement.classList.add('preview');
     addEventListener('message', (e) => {
       if (e.source !== window.parent || window.parent === window) return;
-      if (e.origin !== 'null' && e.origin !== location.origin) return;
+      // même origine uniquement ; en file:// les deux origines sont « null »
+      const sameOrigin = e.origin === location.origin || (location.protocol === 'file:' && e.origin === 'null');
+      if (!sameOrigin) return;
       const m = e.data;
       if (!m || typeof m !== 'object') return;
+      if (m.type === 'bio:visible') { if (m.visible) Bio.startLoop(); else Bio.stopLoop(); return; }
       if (m.type === 'bio:config' && m.config && typeof m.config === 'object') Bio.applyConfig(m.config);
       else if (m.type === 'bio:play') Bio.player.toggle();
       else if (m.type === 'bio:preset' && typeof m.id === 'string') Bio.applyPreset(m.id);
@@ -205,11 +213,13 @@
   /* ---------------------------------------------------------------- boot */
   function boot() {
     const overrides = Bio.preview ? {} : store.get('overrides', {});
-    const cfg = Bio.normalize(window.BIO_CONFIG || {});
+    const declared = Bio.normalize(window.BIO_CONFIG || {}, { enforce: false });
     const clean = {};
     for (const path of Object.keys(overrides || {})) {
-      if (EDITABLE.includes(path) && (!Bio.enums[path] || Bio.enums[path].includes(overrides[path]))) { clean[path] = overrides[path]; U.setPath(cfg, path, overrides[path]); }
+      if (EDITABLE.includes(path) && (!Bio.enums[path] || Bio.enums[path].includes(overrides[path])) && !Bio.lockedOption(declared, path, overrides[path])) { clean[path] = overrides[path]; U.setPath(declared, path, overrides[path]); }
     }
+    Bio.declared = declared;
+    const cfg = Bio.normalize(declared);
     Bio.cfg = cfg;
     Bio.overrides = clean;
 

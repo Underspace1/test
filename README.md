@@ -40,7 +40,8 @@ npx http-server -p 8080 .
 
 **Le dashboard** (`dashboard.html`)
 
-- Vue d'ensemble (URL, vues, widgets, réseaux, liens, thème) puis formulaire par sections (profil, **disposition des widgets**, apparence, fond & effets, liens, réseaux, badges, musique, Discord, avancé)
+- Vue d'ensemble (URL, vues, widgets, réseaux, liens, plan) avec **checklist de complétion**, puis formulaire par sections (profil + SEO, **disposition des widgets**, apparence + mise en page, fond & effets, liens, réseaux, badges, musique, Discord, intégrations, abonnement, avancé)
+- **Recherche** dans les réglages (`Ctrl+/`), point orange sur chaque champ modifié par rapport à `config.js`
 - **Aperçu en direct** dans un cadre téléphone ou ordinateur — chaque réglage est appliqué instantanément
 - 7 **modèles** prêts à l'emploi (Minimal, Nébuleuse, Aurore, Synthwave, Sobre, Sakura, Luxe) qui gardent tes textes et liens
 - Listes **réordonnables** (glisser-déposer ou flèches), dupliquer, supprimer ; sélecteur d'icônes avec recherche
@@ -132,6 +133,10 @@ Colle un lien de partage dans `embed.url` : `https://open.spotify.com/track/…`
 
 Sans serveur, le compteur est **local** : `base` + 1 par jour et par navigateur. Pour un vrai compteur global, renseigne `views.endpoint` avec l'URL d'un service qui répond `{ "value": 123 }`.
 
+## Identité
+
+Arcturus est une géante orange : un seul point chaud sur un ciel noir. L'interface reste noir et blanc ; l'accent `#FFA24A → #FF6A3D` n'apparaît que sur la marque, le bouton principal, les états actifs et le badge VIP. Logo : `assets/logo.svg` (accent) et `assets/logo-mono.svg` (currentColor), favicon dérivé. Titres en **Bricolage Grotesque**, texte en Inter, code en JetBrains Mono. Tagline : *Tout gravite autour de toi.*
+
 ## Abonnement premium
 
 Arcturus est statique : il n'y a ni compte ni vérification de paiement. Le plan est **déclaratif** (`premium.plan` dans `config.js` : `free`, `premium` ou `vip`), le paiement passe par un **lien hébergé** (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans `premium.checkout`, et la page d'accueil (`index.html`) présente les trois niveaux avec leurs prix (définis dans `site.js`).
@@ -177,7 +182,8 @@ js/
 
 ## Notes
 
-- Les données externes (Discord…) sont toujours insérées comme **texte** (jamais en HTML) ; les URL de la config sont filtrées (`http(s)`, `mailto`, `tel`, images `data:`).
+- Les données externes (Discord…) sont toujours insérées comme **texte** (jamais en HTML) ; les URL de la config sont filtrées (`http(s)`, `mailto`, `tel`, images `data:`) ; les liens de paiement doivent être en `https` ; l'import d'un `config.js` dans le dashboard s'exécute dans une iframe *sandbox* sans accès au dashboard.
+- Les aperçus (`profile.html?preview=1`) n'acceptent les messages que de la même origine et mettent leur rendu en pause quand ils sortent de l'écran.
 - L'aperçu du dashboard est la vraie page chargée dans une iframe (`profile.html?preview=1`) et pilotée par `postMessage` ; en mode aperçu, l'écran d'entrée est sauté et le compteur de vues n'est pas incrémenté.
 - Polices : Inter, Space Grotesk, JetBrains Mono (+ Sora, Outfit, Poppins, Syne, Playfair Display à la demande) via Google Fonts, avec repli sur les polices système.
 - Icônes de marques : [Simple Icons](https://simpleicons.org) (CC0). Les marques appartiennent à leurs propriétaires respectifs.

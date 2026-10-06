@@ -186,6 +186,7 @@
     last = performance.now();
     raf = requestAnimationFrame(tick);
   };
+  Bio.stopLoop = () => cancelAnimationFrame(raf);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) cancelAnimationFrame(raf);
     else Bio.startLoop();
@@ -556,6 +557,7 @@
     out.customCss = String(out.customCss || '').replace(/<\/style/gi, '').slice(0, 20000);
     if (!Bio.plans[out.premium.plan]) out.premium.plan = 'free';
     if (!out.premium.checkout || typeof out.premium.checkout !== 'object') out.premium.checkout = { premium: '', vip: '' };
+    ['premium', 'vip'].forEach((k) => { const v = String(out.premium.checkout[k] || '').trim(); out.premium.checkout[k] = /^https:\/\//i.test(v) ? v : v ? v : ''; });
     out.locked = opts && opts.enforce === false ? [] : Bio.entitlements(out);
     out.socialsLimit = Math.max(0, parseInt(out.socialsLimit, 10) || 0);
     ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });

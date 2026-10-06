@@ -143,8 +143,9 @@
   I.init = function (cfg) {
     const token = ++I.token;
     const r = cfg.roblox || {}, o = cfg.osu || {};
-    I.roblox = r.id || r.username ? I.robloxStatic(r) : null;
-    I.osu = o.username || o.id ? I.osuStatic(o) : null;
+    const shown = (id) => Array.isArray(cfg.layout) && cfg.layout.includes(id);
+    I.roblox = shown('roblox') && (r.id || r.username) ? I.robloxStatic(r) : null;
+    I.osu = shown('osu') && (o.username || o.id) ? I.osuStatic(o) : null;
     Bio.emit('roblox', I.roblox);
     Bio.emit('osu', I.osu);
     if (I.roblox && r.live !== false && !Bio.preview) I.fetchRoblox(r, token).then((d) => { if (d && token === I.token) { I.roblox = d; Bio.emit('roblox', d); } });

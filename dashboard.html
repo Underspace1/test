@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · Arcturus</title>
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0a12">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <header class="d-top">
+    <a class="brand" href="profile.html" target="_blank" rel="noopener" title="Voir la page">
+      <span class="brand-mark" id="brand-mark"></span>
+      <span class="brand-name">Arcturus</span>
+      <span class="brand-sub">Dashboard</span>
+    </a>
+    <div class="d-status" id="d-status"><span class="dot"></span><span class="txt">Chargement…</span></div>
+    <div class="d-actions" id="d-actions"></div>
+  </header>
+
+  <div class="d-layout">
+    <nav class="d-nav" id="d-nav" aria-label="Sections"></nav>
+    <main class="d-main" id="d-main"></main>
+    <aside class="d-preview" id="d-preview">
+      <div class="pv-bar">
+        <div class="pv-devices" role="radiogroup" aria-label="Appareil">
+          <button type="button" data-device="phone" role="radio" aria-checked="true" id="pv-phone"></button>
+          <button type="button" data-device="desktop" role="radio" aria-checked="false" id="pv-desktop"></button>
+        </div>
+        <span class="pv-title">Aperçu en direct</span>
+        <div class="pv-tools">
+          <button type="button" class="pv-btn" id="pv-play" title="Lecture / pause de la musique dans l'aperçu"></button>
+          <button type="button" class="pv-btn" id="pv-reload" title="Recharger l'aperçu"></button>
+          <button type="button" class="pv-btn pv-close" id="pv-close" title="Fermer l'aperçu"></button>
+        </div>
+      </div>
+      <div class="pv-box" id="pv-box">
+        <div class="pv-frame" id="pv-frame">
+          <iframe id="pv-iframe" src="profile.html?preview=1" title="Aperçu de ta page"></iframe>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <button type="button" class="pv-fab" id="pv-fab">Aperçu</button>
+
+  <div class="modal" id="modal-import" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="imp-title">
+      <h2 id="imp-title">Importer une configuration</h2>
+      <p>Colle ici le contenu de ton <code>config.js</code> (ou choisis le fichier). Les valeurs inconnues sont ignorées.</p>
+      <textarea id="imp-text" spellcheck="false" placeholder="window.BIO_CONFIG = { … };"></textarea>
+      <div class="modal-foot">
+        <label class="btn ghost file-btn"><input type="file" id="imp-file" accept=".js,.json,text/javascript,application/json"><span>Choisir un fichier…</span></label>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="imp-cancel">Annuler</button>
+        <button type="button" class="btn primary" id="imp-ok">Importer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="site.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

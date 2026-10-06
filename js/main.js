@@ -1,24 +1,27 @@
 /* ==========================================================================
-   main.js — démarrage, réglages en direct, actions, raccourcis, Konami, mode rave
+   main.js — démarrage, réglages en direct, actions, raccourcis, Konami,
+   mode rave, aperçu piloté par le dashboard
    ========================================================================== */
 (function () {
   'use strict';
   const Bio = window.Bio;
   const U = Bio.util;
-  const { $, store, clamp, hslToHex } = U;
+  const { $, store, hslToHex } = U;
 
-  /* Seuls ces réglages peuvent être modifiés depuis le Studio / le terminal et mémorisés */
+  /* Seuls ces réglages peuvent être modifiés depuis les réglages rapides / le terminal et mémorisés */
   const EDITABLE = [
-    'displayName', 'bio', 'theme', 'accent', 'accent2',
+    'displayName', 'bio', 'banner', 'theme', 'accent', 'accent2', 'font', 'nameStyle', 'linkStyle', 'avatarShape', 'avatarRing',
     'background.type', 'background.src', 'background.dim', 'background.blur',
-    'card.opacity', 'card.blur', 'card.radius',
-    'effects.particles', 'effects.tilt', 'effects.cursor', 'effects.trail', 'effects.glitch',
+    'card.style', 'card.border', 'card.opacity', 'card.blur', 'card.radius',
+    'decor.orbs', 'decor.noise', 'decor.vignette', 'decor.scanlines',
+    'effects.particles', 'effects.tilt', 'effects.cursor', 'effects.trail', 'effects.glitch', 'effects.spotlight', 'effects.ripple',
   ];
 
   Bio.set = function (path, val, persist) {
     if (!EDITABLE.includes(path)) return;
+    if (Bio.enums[path] && !Bio.enums[path].includes(val)) return;
     U.setPath(Bio.cfg, path, val);
-    if (persist) {
+    if (persist && !Bio.preview) {
       Bio.overrides[path] = val;
       store.set('overrides', Bio.overrides);
     }
@@ -26,9 +29,26 @@
     Bio.emit('cfg', path);
   };
 
-  Bio.exportConfig = function () {
-    return '/* Config exportée depuis le Studio — remplace le contenu de config.js */\nwindow.BIO_CONFIG = ' + JSON.stringify(Bio.cfg, null, 2) + ';\n';
+  /* Remplace toute la configuration (utilisé par l'aperçu du dashboard) */
+  Bio.applyConfig = function (raw) {
+    const prev = Bio.cfg;
+    const cfg = Bio.normalize(raw);
+    Bio.cfg = cfg;
+    if (!Bio.rave.on) Bio.applyTheme(cfg);
+    Bio.ui.build();
+    if (JSON.stringify(prev.views) !== JSON.stringify(cfg.views) || !Bio.ui.viewsShown) Bio.ui.initViews();
+    else { const el = Bio.util.$('#chip-views .chip-t'); if (el) el.textContent = Bio.ui.viewsText || '0'; }
+    if (JSON.stringify(prev.music.tracks) !== JSON.stringify(cfg.music.tracks)) {
+      Bio.player.pause();
+      Bio.player.init(cfg);
+    }
+    if (JSON.stringify(prev.discord) !== JSON.stringify(cfg.discord)) Bio.presence.init(cfg);
+    Bio.ui.renderPresence(Bio.presence.data);
+    document.title = cfg.pageTitle || '@' + cfg.username;
+    Bio.emit('config');
   };
+
+  Bio.exportConfig = function () { return Bio.serialize(Bio.cfg); };
   Bio.resetOverrides = function () {
     store.del('overrides');
     location.reload();
@@ -68,6 +88,7 @@
 
   /* -------------------------------------------------------------- actions */
   function registerActions() {
+    Bio.actions.length = 0;
     const cfg = Bio.cfg, A = Bio.addAction, P = Bio.player;
     const openUrl = (url) => window.open(U.safeUrl(url), '_blank', 'noopener');
     const toggleCfg = (path, label) => A({ group: 'Effets', title: label, icon: 'sparkles', keywords: 'activer désactiver basculer', run: () => { Bio.set(path, !U.getPath(Bio.cfg, path), true); U.toast(label + ' : ' + (U.getPath(Bio.cfg, path) ? 'activé' : 'désactivé'), 'check'); } });
@@ -85,26 +106,42 @@
     P.tracks.forEach((t, i) => A({ group: 'Musique', title: 'Écouter : ' + t.title, icon: 'headphones', keywords: t.artist, run: async () => { await P.select(i); if (!P.playing) P.play(); } }));
 
     Object.entries(Bio.themes).forEach(([key, t]) => A({ group: 'Thème', title: 'Thème ' + t.label, icon: 'palette', keywords: 'couleur ' + key, run: () => { Bio.set('accent', '', true); Bio.set('accent2', '', true); Bio.set('theme', key, true); } }));
+    Bio.presets.forEach((p) => A({ group: 'Modèles', title: 'Modèle ' + p.label, icon: 'layers', keywords: p.desc, run: () => Bio.applyPreset(p.id) }));
 
-    A({ group: 'Fond', title: 'Fond fluide (WebGL)', icon: 'image', keywords: 'shader background', run: () => Bio.set('background.type', 'shader', true) });
-    A({ group: 'Fond', title: 'Fond sobre', icon: 'image', keywords: 'aucun none', run: () => Bio.set('background.type', 'none', true) });
-    [['fireflies', 'Lucioles'], ['snow', 'Neige'], ['stars', 'Étoiles'], ['none', 'Sans particules']].forEach(([k, l]) =>
+    [['shader', 'Fond fluide (WebGL)'], ['aurora', 'Fond aurore'], ['grid', 'Fond grille rétro'], ['none', 'Fond sobre']].forEach(([k, l]) =>
+      A({ group: 'Fond', title: l, icon: 'image', keywords: 'background', run: () => Bio.set('background.type', k, true) }));
+    [['fireflies', 'Lucioles'], ['snow', 'Neige'], ['stars', 'Étoiles'], ['shooting', 'Étoiles filantes'], ['bokeh', 'Bokeh'], ['rain', 'Pluie'], ['none', 'Sans particules']].forEach(([k, l]) =>
       A({ group: 'Fond', title: 'Particules : ' + l, icon: 'sparkles', keywords: 'effet', run: () => Bio.set('effects.particles', k, true) }));
 
     toggleCfg('effects.tilt', 'Inclinaison 3D');
     toggleCfg('effects.cursor', 'Curseur personnalisé');
     toggleCfg('effects.trail', 'Traînée du curseur');
     toggleCfg('effects.glitch', 'Glitch du nom');
+    toggleCfg('effects.spotlight', 'Halo du curseur');
+    toggleCfg('decor.scanlines', 'Scanlines');
 
-    A({ group: 'Page', title: 'Copier le lien de la page', icon: 'share', keywords: 'partager url', run: async () => { const ok = await U.copy(location.href.split('#')[0]); U.toast(ok ? 'Lien copié' : 'Copie impossible', ok ? 'check' : 'close'); } });
-    if (cfg.studio) A({ group: 'Page', title: 'Ouvrir le Studio', icon: 'sliders', keywords: 'éditeur personnaliser', run: () => Bio.overlays.open('studio') });
+    A({ group: 'Page', title: 'Copier le lien de la page', icon: 'share', keywords: 'partager url', run: async () => { const ok = await U.copy(location.href.split('#')[0].split('?')[0]); U.toast(ok ? 'Lien copié' : 'Copie impossible', ok ? 'check' : 'close'); } });
+    if (!Bio.preview) A({ group: 'Page', title: 'Ouvrir le dashboard (éditeur complet)', icon: 'layers', keywords: 'config éditeur personnaliser', run: () => window.open('dashboard.html', '_blank', 'noopener') });
+    if (cfg.studio) A({ group: 'Page', title: 'Réglages rapides', icon: 'sliders', keywords: 'studio éditeur', run: () => Bio.overlays.open('studio') });
     if (cfg.terminal) A({ group: 'Page', title: 'Ouvrir le terminal', icon: 'terminal', keywords: 'console commande', run: () => Bio.overlays.open('terminal') });
-    A({ group: 'Page', title: 'Plein écran', icon: 'globe', keywords: 'fullscreen', run: () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } });
+    A({ group: 'Page', title: 'Plein écran', icon: 'monitor', keywords: 'fullscreen', run: () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } });
     A({ group: 'Page', title: 'Réinitialiser mes personnalisations', icon: 'reset', keywords: 'reset', run: () => Bio.resetOverrides() });
 
     A({ group: 'Secret', title: 'Mode rave', icon: 'zap', keywords: 'fête konami disco', run: () => rave.toggle() });
     A({ group: 'Secret', title: 'Pluie matrix', icon: 'code', keywords: 'neo', run: () => Bio.matrix.start(9000) });
   }
+
+  Bio.applyPreset = function (id) {
+    const p = Bio.presets.find((x) => x.id === id);
+    if (!p) return;
+    const flat = (obj, prefix = '') => Object.entries(obj).forEach(([k, v]) => {
+      const path = prefix + k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) flat(v, path + '.');
+      else Bio.set(path, v, true);
+    });
+    flat(p.cfg);
+    U.toast('Modèle « ' + p.label + ' » appliqué', 'layers');
+  };
 
   /* ------------------------------------------------------------ raccourcis */
   function hotkeys() {
@@ -142,25 +179,44 @@
     });
   }
 
+  /* --------------------------------------------- aperçu piloté par le dashboard */
+  function previewBridge() {
+    if (!Bio.preview) return;
+    document.documentElement.classList.add('preview');
+    addEventListener('message', (e) => {
+      if (e.source !== window.parent || window.parent === window) return;
+      if (e.origin !== 'null' && e.origin !== location.origin) return;
+      const m = e.data;
+      if (!m || typeof m !== 'object') return;
+      if (m.type === 'bio:config' && m.config && typeof m.config === 'object') Bio.applyConfig(m.config);
+      else if (m.type === 'bio:play') Bio.player.toggle();
+      else if (m.type === 'bio:preset' && typeof m.id === 'string') Bio.applyPreset(m.id);
+    });
+    try { window.parent.postMessage({ type: 'bio:ready' }, '*'); } catch (e) { /* ignore */ }
+  }
+
   /* ---------------------------------------------------------------- boot */
   function boot() {
-    const overrides = store.get('overrides', {});
-    const cfg = U.deepMerge(Bio.defaults, window.BIO_CONFIG || {});
+    const overrides = Bio.preview ? {} : store.get('overrides', {});
+    const cfg = Bio.normalize(window.BIO_CONFIG || {});
     const clean = {};
     for (const path of Object.keys(overrides || {})) {
-      if (EDITABLE.includes(path)) { clean[path] = overrides[path]; U.setPath(cfg, path, overrides[path]); }
+      if (EDITABLE.includes(path) && (!Bio.enums[path] || Bio.enums[path].includes(overrides[path]))) { clean[path] = overrides[path]; U.setPath(cfg, path, overrides[path]); }
     }
     Bio.cfg = cfg;
     Bio.overrides = clean;
 
     Bio.applyTheme(cfg);
+    Bio.applyFont(cfg.font);
     Bio.initBackground();
     Bio.player.init(cfg);
     Bio.ui.init();
     Bio.presence.init(cfg);
     Bio.overlays.init();
     registerActions();
+    Bio.on('config', registerActions);
     hotkeys();
+    previewBridge();
     Bio.startLoop();
     document.documentElement.classList.add('ready');
 

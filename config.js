@@ -1,24 +1,40 @@
 /* ==========================================================================
    config.js — C'EST LE SEUL FICHIER À MODIFIER POUR PERSONNALISER TA PAGE
-   Tout ce qui est commenté "optionnel" peut être supprimé sans rien casser.
+
+   Astuce : ouvre dashboard.html pour tout régler visuellement avec un aperçu
+   en direct, puis « Télécharger config.js » et remplace ce fichier.
+   Tout ce qui est marqué "optionnel" peut être supprimé sans rien casser.
    ========================================================================== */
 window.BIO_CONFIG = {
   /* ---------- identité ---------- */
   username: 'nova',                 // affiché sous forme @nova
   displayName: 'Nova',              // le grand titre
   avatar: 'assets/avatar.svg',      // chemin local ou URL https://…
+  banner: 'gradient',               // '' (aucune), 'gradient', ou une image : 'assets/banner.jpg'
   verified: true,                   // petite étincelle à côté du nom
   // Phrases qui s'écrivent / s'effacent en boucle sous le nom
   bio: [
     'designer · dev · insomniaque',
     'je construis des trucs bizarres et beaux',
-    'cafe, synthés & nuits blanches',
+    'café, synthés & nuits blanches',
   ],
   location: 'Paris, France',
   timezone: 'Europe/Paris',         // affiche ton heure locale en direct (optionnel)
   uid: 1,                           // ton numéro de membre
   joined: '2026-01-01',             // optionnel
   pageTitle: '@nova',               // le titre de l'onglet s'écrit lettre par lettre
+
+  /* ---------- style ----------
+     font        : 'space' | 'inter' | 'sora' | 'outfit' | 'poppins' | 'syne' | 'playfair' | 'mono'
+     nameStyle   : 'shimmer' (dégradé animé) | 'neon' | 'rainbow' | 'plain'
+     linkStyle   : 'glass' | 'solid' | 'outline' | 'neon'
+     avatarShape : 'circle' | 'rounded' | 'hexagon'
+     avatarRing  : 'gradient' (anneau tournant) | 'pulse' | 'none'                */
+  font: 'space',
+  nameStyle: 'shimmer',
+  linkStyle: 'glass',
+  avatarShape: 'circle',
+  avatarRing: 'gradient',
 
   /* ---------- écran d'entrée ("click to enter") ---------- */
   splash: {
@@ -28,29 +44,43 @@ window.BIO_CONFIG = {
 
   /* ---------- fond ----------
      type : 'shader'  → fluide WebGL généré en direct, réagit à la musique (défaut)
+            'aurora'  → voiles d'aurore boréale animés (CSS pur, très léger)
+            'grid'    → grille rétro façon synthwave
             'video'   → une vidéo en boucle (mets son chemin dans src, ex. 'assets/fond.mp4')
             'image'   → une image / un gif (src)
             'none'    → dégradé simple                                          */
   background: { type: 'shader', src: '', dim: 0.25, blur: 0 },
 
   /* ---------- couleurs ----------
-     theme : 'violet' | 'ocean' | 'ember' | 'mint' | 'sakura' | 'mono'
+     theme : 'violet' | 'ocean' | 'ember' | 'mint' | 'sakura' | 'gold' | 'ice' | 'mono'
      accent / accent2 : surcharge perso en hexadécimal (ex. '#ff5d8f'), optionnel  */
   theme: 'violet',
   accent: '',
   accent2: '',
 
-  /* ---------- carte en verre dépoli ---------- */
-  card: { opacity: 0.55, blur: 22, radius: 28 },
+  /* ---------- carte ----------
+     style  : 'glass' (verre dépoli) | 'solid' | 'outline' | 'neon'
+     border : 'spotlight' (suit la souris) | 'gradient' (anneau animé) | 'none'   */
+  card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
+
+  /* ---------- décorations ---------- */
+  decor: {
+    orbs: true,                     // orbes lumineuses flottantes derrière la carte
+    noise: true,                    // grain fin (rend le verre plus "physique")
+    vignette: true,                 // assombrit les bords
+    scanlines: false,               // lignes de balayage rétro
+  },
 
   /* ---------- effets ----------
-     particles : 'fireflies' | 'snow' | 'stars' | 'none'                        */
+     particles : 'fireflies' | 'snow' | 'stars' | 'shooting' | 'bokeh' | 'rain' | 'none' */
   effects: {
     particles: 'fireflies',
     tilt: true,                     // la carte suit la souris en 3D
     cursor: true,                   // curseur personnalisé
     trail: true,                    // étincelles derrière le curseur
     glitch: true,                   // le nom "glitch" de temps en temps
+    spotlight: true,                // halo lumineux qui suit la souris
+    ripple: true,                   // onde au clic
   },
 
   /* ---------- Discord en direct (via l'API publique Lanyard) ----------
@@ -78,7 +108,8 @@ window.BIO_CONFIG = {
   music: { autoplay: true, volume: 0.55, tracks: [] },
 
   /* ---------- badges (survole-les) ----------
-     icônes : crown star heart zap flame code moon sparkles headphones gamepad … */
+     icônes : crown star heart zap flame code moon sparkles headphones gamepad
+              rocket coffee shield trophy planet ghost skull leaf cpu paint …     */
   badges: [
     { icon: 'crown', label: 'Fondateur' },
     { icon: 'code', label: 'Développeur' },
@@ -109,6 +140,6 @@ window.BIO_CONFIG = {
   ],
 
   /* ---------- extras ---------- */
-  studio: true,    // touche E : éditeur visuel en direct (comme un dashboard)
+  studio: true,    // touche E : réglages rapides en direct
   terminal: true,  // touche ` : terminal caché
 };

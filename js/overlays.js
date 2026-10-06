@@ -172,14 +172,14 @@
         Bio.set('accent', '', true); Bio.set('accent2', '', true); Bio.set('theme', a[0], true);
         print('thème → ' + Bio.themes[a[0]].label, 'ok');
       } },
-      fx: { d: 'fx <fireflies|snow|stars|none>', run(a) {
-        const ok = ['fireflies', 'snow', 'stars', 'none'];
+      fx: { d: 'fx <fireflies|snow|stars|shooting|bokeh|rain|none>', run(a) {
+        const ok = Bio.enums['effects.particles'];
         if (!ok.includes(a[0])) return print('usage : fx <' + ok.join('|') + '>', 'err');
         Bio.set('effects.particles', a[0], true);
         print('particules → ' + a[0], 'ok');
       } },
-      bg: { d: 'bg <shader|none>', run(a) {
-        if (!['shader', 'none'].includes(a[0])) return print('usage : bg <shader|none>', 'err');
+      bg: { d: 'bg <shader|aurora|grid|none>', run(a) {
+        if (!['shader', 'aurora', 'grid', 'none'].includes(a[0])) return print('usage : bg <shader|aurora|grid|none>', 'err');
         Bio.set('background.type', a[0], true);
         print('fond → ' + a[0], 'ok');
       } },
@@ -216,6 +216,13 @@
       } },
       matrix: { d: 'matrix [secondes]', run(a) { const s = clamp(parseInt(a[0], 10) || 8, 2, 30); print('suis le lapin blanc… (' + s + ' s)', 'ok'); O.close(); Bio.matrix.start(s * 1000); } },
       rave: { d: 'mode rave (réagit à la musique)', run() { O.close(); Bio.rave.toggle(); } },
+      preset: { d: 'preset [nom] — applique un modèle', run(a) {
+        if (!a[0]) return print('modèles : ' + Bio.presets.map((p) => p.id).join(', '));
+        const p = Bio.presets.find((x) => x.id === a[0]);
+        if (!p) return print('modèle inconnu. Choix : ' + Bio.presets.map((x) => x.id).join(', '), 'err');
+        Bio.applyPreset(p.id);
+        print('modèle → ' + p.label, 'ok');
+      } },
       echo: { d: 'echo <texte>', run(a) { print(a.join(' ')); } },
       coffee: { d: '☕', hidden: true, run() { ['    ( (', '     ) )', '  ........', '  |      |]', '  \\      /', "   `----'"].forEach((l) => print(l, 'hi')); print('un café, et ça repart.', 'dim'); } },
       sudo: { d: '', hidden: true, run() { print('visiteur n’est pas dans le fichier sudoers. Cet incident sera signalé. ✦', 'err'); } },
@@ -347,15 +354,28 @@
       set('accent', hslToHex(hue, 85, 70)); set('accent2', hslToHex(hue + 45, 85, 62)); syncs.forEach((f) => f());
     } }, Bio.icon('wand', 15), 'Palette aléatoire');
 
+    const presetGrid = h('div', { class: 'st-presets' }, Bio.presets.map((p) => {
+      const b = h('button', { type: 'button', class: 'st-preset', 'aria-label': 'Modèle ' + p.label },
+        h('span', { class: 'st-preset-sw', style: { background: `linear-gradient(135deg, ${p.colors[0]}, ${p.colors[1]})` } }),
+        h('span', { text: p.label }));
+      b.addEventListener('click', () => { Bio.applyPreset(p.id); syncs.forEach((f) => f()); });
+      return b;
+    }));
+
     const body = h('div', { class: 'st-body' },
+      section('Modèles', presetGrid),
       section('Identité', row('Nom', text('displayName')), row('Bio', area('bio'))),
       section('Couleurs', themeChips, row('Accent', color('accent')), row('Accent 2', color('accent2')), hueBtn),
-      section('Fond', seg('background.type', [['shader', 'Fluide'], ['video', 'Vidéo'], ['image', 'Image'], ['none', 'Aucun']]),
-        row('Source (vidéo / image)', text('background.src')),
+      section('Style', seg('nameStyle', [['shimmer', 'Dégradé'], ['neon', 'Néon'], ['rainbow', 'Arc-en-ciel'], ['plain', 'Simple']]),
+        seg('linkStyle', [['glass', 'Verre'], ['solid', 'Plein'], ['outline', 'Contour'], ['neon', 'Néon']])),
+      section('Fond', seg('background.type', [['shader', 'Fluide'], ['aurora', 'Aurore'], ['grid', 'Grille'], ['none', 'Aucun']]),
         row('Assombrir', range('background.dim', 0, 0.9, 0.01)), row('Flou', range('background.blur', 0, 24, 1, 'px'))),
-      section('Particules', seg('effects.particles', [['fireflies', 'Lucioles'], ['snow', 'Neige'], ['stars', 'Étoiles'], ['none', 'Aucune']])),
-      section('Carte', row('Opacité', range('card.opacity', 0.05, 1, 0.01)), row('Flou verre', range('card.blur', 0, 50, 1, 'px')), row('Arrondi', range('card.radius', 0, 48, 1, 'px'))),
-      section('Effets', row('Inclinaison 3D', toggle('effects.tilt')), row('Curseur perso', toggle('effects.cursor')), row('Traînée', toggle('effects.trail')), row('Glitch du nom', toggle('effects.glitch'))));
+      section('Particules', seg('effects.particles', [['fireflies', 'Lucioles'], ['snow', 'Neige'], ['shooting', 'Filantes'], ['bokeh', 'Bokeh'], ['none', 'Aucune']])),
+      section('Carte', seg('card.style', [['glass', 'Verre'], ['solid', 'Plein'], ['outline', 'Contour'], ['neon', 'Néon']]),
+        row('Opacité', range('card.opacity', 0.05, 1, 0.01)), row('Flou verre', range('card.blur', 0, 50, 1, 'px')), row('Arrondi', range('card.radius', 0, 48, 1, 'px'))),
+      section('Décor & effets', row('Grain', toggle('decor.noise')), row('Vignette', toggle('decor.vignette')), row('Scanlines', toggle('decor.scanlines')), row('Orbes', toggle('decor.orbs')),
+        row('Inclinaison 3D', toggle('effects.tilt')), row('Halo du curseur', toggle('effects.spotlight')), row('Traînée', toggle('effects.trail')), row('Glitch du nom', toggle('effects.glitch'))),
+      Bio.preview ? null : h('a', { class: 'st-btn st-dash', href: 'dashboard.html', target: '_blank', rel: 'noopener' }, Bio.icon('layers', 15), 'Ouvrir l’éditeur complet', Bio.icon('external', 13)));
 
     const foot = h('div', { class: 'st-foot' },
       h('button', { type: 'button', class: 'st-btn primary', onclick: async () => {
@@ -366,7 +386,7 @@
 
     const closeBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Fermer', onclick: () => O.close() }, Bio.icon('close', 17));
     const panel = h('aside', { class: 'st-panel', role: 'dialog', 'aria-label': 'Studio de personnalisation' },
-      h('header', { class: 'st-head' }, h('div', {}, h('h2', { text: 'Studio' }), h('p', { text: 'Modifie la page en direct' })), closeBtn),
+      h('header', { class: 'st-head' }, h('div', {}, h('h2', { text: 'Réglages rapides' }), h('p', { text: 'Modifie la page en direct' })), closeBtn),
       body, foot);
     const el = h('div', { class: 'overlay studio', 'data-open': 'false', inert: '' }, panel);
     O.register('studio', { el, focus: () => closeBtn.focus(), onOpen: () => syncs.forEach((f) => f()) });

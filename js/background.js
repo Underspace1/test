@@ -1,5 +1,6 @@
 /* ==========================================================================
-   background.js — fond shader WebGL (réactif à la musique), particules, matrix
+   background.js — fond shader WebGL (réactif à la musique), aurora / grille
+   (CSS), particules, pluie matrix
    ========================================================================== */
 (function () {
   'use strict';
@@ -104,19 +105,27 @@ void main(){
     const c = Bio.cfg.background;
     const type = c.type;
     this.root.dataset.type = type;
-    this.root.style.setProperty('--dim', clamp(c.dim, 0, 0.9));
-    this.root.style.setProperty('--bgblur', (c.blur || 0) + 'px');
+    this.root.style.setProperty('--dim', clamp(+c.dim || 0, 0, 0.9));
+    this.root.style.setProperty('--bgblur', (+c.blur || 0) + 'px');
     const v = this.video;
     if (type === 'video' && c.src) {
       const src = Bio.util.safeUrl(c.src);
       if (v.getAttribute('src') !== src) v.setAttribute('src', src);
       v.play().catch(() => {});
-    } else {
+    } else if (v.getAttribute('src')) {
       v.pause();
       v.removeAttribute('src');
       v.load();
     }
-    this.image.style.backgroundImage = type === 'image' && c.src ? 'url("' + Bio.util.safeUrl(c.src).replace(/"/g, '%22') + '")' : '';
+    this.image.style.backgroundImage = type === 'image' && c.src ? Bio.util.cssUrl(c.src) : '';
+    // décorations
+    const d = Bio.cfg.decor || {};
+    const root = document.documentElement;
+    root.classList.toggle('decor-orbs', !!d.orbs);
+    root.classList.toggle('decor-noise', !!d.noise);
+    root.classList.toggle('decor-vignette', !!d.vignette);
+    root.classList.toggle('decor-scanlines', !!d.scanlines);
+    root.classList.toggle('fx-spotlight', !!(Bio.cfg.effects && Bio.cfg.effects.spotlight) && Bio.util.finePointer());
   };
 
   bg.draw = function (dt, t) {
@@ -148,13 +157,16 @@ void main(){
     addEventListener('pointermove', (e) => {
       this.mouseT[0] = e.clientX / innerWidth;
       this.mouseT[1] = 1 - e.clientY / innerHeight;
+      document.documentElement.style.setProperty('--sx', e.clientX + 'px');
+      document.documentElement.style.setProperty('--sy', e.clientY + 'px');
     }, { passive: true });
-    Bio.on('cfg', (path) => { if (path.startsWith('background')) this.apply(); });
+    Bio.on('cfg', (path) => { if (/^(background|decor|effects\.spotlight)/.test(path)) this.apply(); });
+    Bio.on('config', () => this.apply());
     Bio.frame((dt, t) => this.draw(dt, t));
   };
 
   /* ------------------------------------------------------------ particules */
-  const fx = (Bio.fx = { list: [], sparks: [], mouse: { x: -999, y: -999 }, w: 0, h: 0, dpr: 1 });
+  const fx = (Bio.fx = { list: [], sparks: [], shots: [], mouse: { x: -999, y: -999 }, w: 0, h: 0, dpr: 1, shotTimer: 0 });
 
   fx.makeSprite = function () {
     const s = document.createElement('canvas');
@@ -169,6 +181,18 @@ void main(){
     g.fillStyle = grad;
     g.fillRect(0, 0, 64, 64);
     this.sprite = s;
+    // bokeh : disque doux bicolore
+    const k = document.createElement('canvas');
+    k.width = k.height = 128;
+    const kg = k.getContext('2d');
+    const [r2, g2, b2] = Bio.colors.b;
+    const kgrad = kg.createRadialGradient(64, 64, 0, 64, 64, 64);
+    kgrad.addColorStop(0, `rgba(${r},${gr},${b},0.55)`);
+    kgrad.addColorStop(0.7, `rgba(${r2},${g2},${b2},0.25)`);
+    kgrad.addColorStop(1, `rgba(${r2},${g2},${b2},0)`);
+    kg.fillStyle = kgrad;
+    kg.fillRect(0, 0, 128, 128);
+    this.bokeh = k;
   };
 
   fx.resize = function () {
@@ -188,16 +212,23 @@ void main(){
     let n = 0;
     if (mode === 'fireflies') n = clamp(Math.round(area / 22000), 18, 70);
     else if (mode === 'snow') n = clamp(Math.round(area / 9000), 40, 160);
-    else if (mode === 'stars') n = clamp(Math.round(area / 5500), 60, 260);
+    else if (mode === 'stars' || mode === 'shooting') n = clamp(Math.round(area / 5500), 60, 260);
+    else if (mode === 'bokeh') n = clamp(Math.round(area / 60000), 8, 26);
+    else if (mode === 'rain') n = clamp(Math.round(area / 7000), 60, 220);
     if (reduce) n = Math.round(n / 3);
     this.list = [];
+    this.shots = [];
     for (let i = 0; i < n; i++) {
-      this.list.push({
+      const p = {
         x: rand(0, this.w), y: rand(0, this.h),
-        vx: rand(-12, 12), vy: mode === 'snow' ? rand(18, 55) : rand(-14, 6),
-        r: mode === 'fireflies' ? rand(7, 20) : rand(0.6, mode === 'snow' ? 2.6 : 1.6),
-        ph: rand(0, Math.PI * 2), sp: rand(0.4, 1.4), z: rand(0.2, 1),
-      });
+        vx: rand(-12, 12), vy: rand(-14, 6),
+        r: rand(0.6, 1.6), ph: rand(0, Math.PI * 2), sp: rand(0.4, 1.4), z: rand(0.2, 1),
+      };
+      if (mode === 'fireflies') p.r = rand(7, 20);
+      else if (mode === 'snow') { p.vy = rand(18, 55); p.r = rand(0.6, 2.6); }
+      else if (mode === 'bokeh') { p.r = rand(30, 110); p.vx = rand(-6, 6); p.vy = rand(-8, -2); }
+      else if (mode === 'rain') { p.vy = rand(520, 900); p.len = rand(14, 32); p.x = rand(-this.w * 0.2, this.w); }
+      this.list.push(p);
     }
   };
 
@@ -218,8 +249,8 @@ void main(){
     const ctx = this.ctx, W = this.w, H = this.h;
     ctx.clearRect(0, 0, W, H);
     const mode = Bio.cfg.effects.particles;
-    const reduce = Bio.util.reduceMotion();
     const m = this.mouse;
+    const [ar, ag, ab] = Bio.colors.a;
 
     if (mode === 'fireflies') {
       ctx.globalCompositeOperation = 'lighter';
@@ -254,7 +285,7 @@ void main(){
         ctx.arc(p.x, p.y, p.r, 0, 6.2832);
         ctx.fill();
       }
-    } else if (mode === 'stars') {
+    } else if (mode === 'stars' || mode === 'shooting') {
       ctx.globalCompositeOperation = 'lighter';
       const ox = (m.x - W / 2) * 0.012, oy = (m.y - H / 2) * 0.012;
       ctx.fillStyle = '#fff';
@@ -266,6 +297,62 @@ void main(){
         ctx.arc(p.x - ox * p.z * 8, p.y - oy * p.z * 8, p.r * (0.6 + p.z), 0, 6.2832);
         ctx.fill();
       }
+      if (mode === 'shooting' && !Bio.util.reduceMotion()) {
+        this.shotTimer -= dt;
+        if (this.shotTimer <= 0) {
+          this.shotTimer = rand(1.2, 3.5);
+          const a = rand(0.45, 0.8);
+          this.shots.push({ x: rand(-W * 0.1, W * 0.9), y: rand(-20, H * 0.4), vx: Math.cos(a) * rand(700, 1100), vy: Math.sin(a) * rand(500, 800), life: 0, max: rand(0.6, 1.1) });
+        }
+        for (let i = this.shots.length - 1; i >= 0; i--) {
+          const s = this.shots[i];
+          s.life += dt;
+          if (s.life > s.max) { this.shots.splice(i, 1); continue; }
+          const k = Math.sin((s.life / s.max) * Math.PI);
+          const len = 120 * k;
+          const hyp = Math.hypot(s.vx, s.vy) || 1;
+          const nx = s.vx / hyp, ny = s.vy / hyp;
+          const grad = ctx.createLinearGradient(s.x - nx * len, s.y - ny * len, s.x, s.y);
+          grad.addColorStop(0, 'rgba(255,255,255,0)');
+          grad.addColorStop(1, `rgba(255,255,255,${0.9 * k})`);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 1;
+          ctx.beginPath();
+          ctx.moveTo(s.x - nx * len, s.y - ny * len);
+          ctx.lineTo(s.x, s.y);
+          ctx.stroke();
+          ctx.globalAlpha = k;
+          ctx.drawImage(this.sprite, s.x - 8, s.y - 8, 16, 16);
+          s.x += s.vx * dt; s.y += s.vy * dt;
+        }
+      }
+    } else if (mode === 'bokeh') {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of this.list) {
+        p.ph += dt * p.sp * 0.5;
+        p.x += (p.vx + Math.sin(p.ph) * 8) * dt;
+        p.y += p.vy * dt;
+        if (p.y < -p.r * 2) { p.y = H + p.r; p.x = rand(0, W); }
+        if (p.x < -p.r * 2) p.x = W + p.r; else if (p.x > W + p.r * 2) p.x = -p.r;
+        ctx.globalAlpha = 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(p.ph * 1.7)) * p.z;
+        ctx.drawImage(this.bokeh, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+      }
+    } else if (mode === 'rain') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = `rgba(${Math.round(lerp(ar, 255, 0.5))},${Math.round(lerp(ag, 255, 0.5))},${Math.round(lerp(ab, 255, 0.5))},0.5)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const p of this.list) {
+        const spd = p.vy * (0.5 + p.z * 0.6);
+        p.y += spd * dt;
+        p.x += spd * 0.18 * dt;
+        if (p.y > H + 40) { p.y = rand(-80, -10); p.x = rand(-W * 0.2, W); }
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.len * 0.18, p.y - p.len);
+      }
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
     }
 
     // étincelles (clics, traînée, confettis du mode rave)
@@ -334,6 +421,7 @@ void main(){
     addEventListener('pointerleave', () => { this.mouse.x = this.mouse.y = -999; });
     Bio.on('theme', () => this.makeSprite());
     Bio.on('cfg', (path) => { if (path === 'effects.particles') this.seed(); });
+    Bio.on('config', () => this.seed());
     Bio.frame((dt, t) => this.draw(dt, t));
   };
 
@@ -344,9 +432,8 @@ void main(){
   matrix.start = function (ms = 9000) {
     this.canvas = this.canvas || $('#matrix');
     this.ctx = this.ctx || this.canvas.getContext('2d');
-    const dpr = 1;
-    this.canvas.width = innerWidth * dpr;
-    this.canvas.height = innerHeight * dpr;
+    this.canvas.width = innerWidth;
+    this.canvas.height = innerHeight;
     this.size = 16;
     this.cols = Array.from({ length: Math.ceil(innerWidth / this.size) }, () => rand(-40, 0));
     this.ctx.fillStyle = '#000';

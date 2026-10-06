@@ -18,14 +18,24 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- fond : shader WebGL / vidéo / image -->
+  <!-- fond : shader WebGL / aurora / grille / vidéo / image -->
   <div id="bg" aria-hidden="true">
     <video id="bg-video" muted loop playsinline preload="auto"></video>
     <div id="bg-image"></div>
     <canvas id="bg-gl"></canvas>
+    <div id="bg-aurora"><i></i><i></i><i></i><i></i></div>
+    <div id="bg-grid"><i class="horizon"></i><i class="floor"></i></div>
     <div id="bg-dim"></div>
   </div>
+  <div id="decor" aria-hidden="true">
+    <div class="orbs"><i></i><i></i><i></i></div>
+    <div class="spotlight"></div>
+    <div class="noise"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+  </div>
   <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="ripples" aria-hidden="true"></div>
   <canvas id="matrix" aria-hidden="true"></canvas>
 
   <div id="cursor" aria-hidden="true"><i class="c-ring"></i><i class="c-dot"></i></div>

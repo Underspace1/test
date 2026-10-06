@@ -1,11 +1,14 @@
 /* ==========================================================================
-   ui.js — carte de profil, écran d'entrée, lecteur, tilt 3D, curseur, magnétisme
+   ui.js — carte de profil, écran d'entrée, lecteur, tilt 3D, curseur,
+   magnétisme, ripple, mode aperçu (dashboard)
    ========================================================================== */
 (function () {
   'use strict';
   const Bio = window.Bio;
-  const { $, h, clamp, sleep, fmtTime, store, safeUrl } = Bio.util;
+  const { $, h, clamp, sleep, fmtTime, store, safeUrl, cssUrl } = Bio.util;
   const UI = (Bio.ui = { entered: false });
+
+  Bio.preview = /[?&]preview\b/.test(location.search);
 
   const STATUS_FR = { online: 'En ligne', idle: 'Absent', dnd: 'Ne pas déranger', offline: 'Hors ligne' };
 
@@ -22,6 +25,8 @@
   UI.build = function () {
     const cfg = Bio.cfg;
     const card = $('#card');
+    const rebuild = !!UI.el;
+    card.classList.toggle('rebuilt', rebuild);
     card.textContent = '';
     let i = 0;
     const rev = (el) => { el.classList.add('reveal'); el.style.setProperty('--i', i++); return el; };
@@ -29,11 +34,18 @@
     const tools = h('div', { class: 'card-tools' },
       toolBtn('search', 'Palette de commandes · Ctrl+K', () => Bio.overlays.open('palette')),
       cfg.terminal ? toolBtn('terminal', 'Terminal · `', () => Bio.overlays.open('terminal')) : null,
-      cfg.studio ? toolBtn('sliders', 'Studio · E', () => Bio.overlays.open('studio')) : null);
+      cfg.studio ? toolBtn('sliders', 'Réglages rapides · E', () => Bio.overlays.open('studio')) : null);
+
+    let banner = null;
+    if (cfg.banner) {
+      banner = h('div', { class: 'banner' + (cfg.banner === 'gradient' ? ' gradient' : '') });
+      if (cfg.banner !== 'gradient') banner.style.backgroundImage = cssUrl(cfg.banner);
+    }
+    card.classList.toggle('has-banner', !!banner);
 
     const img = h('img', { src: safeUrl(cfg.avatar), alt: 'Avatar de ' + cfg.displayName, width: 112, height: 112, draggable: 'false' });
     img.addEventListener('error', () => { if (!img.dataset.fb) { img.dataset.fb = 1; img.src = 'assets/avatar.svg'; } });
-    const avatar = h('div', { class: 'avatar' }, h('span', { class: 'ring' }), img, h('span', { class: 'status', 'data-status': 'none' }));
+    const avatar = h('div', { class: 'avatar' }, h('span', { class: 'ring' }), h('span', { class: 'frame' }, img), h('span', { class: 'status', 'data-status': 'none' }));
 
     const nameText = h('span', { class: 'name-text', 'data-text': cfg.displayName, text: cfg.displayName });
     const name = h('h1', { class: 'name' }, nameText, cfg.verified ? h('span', { class: 'verified', 'data-tip': 'Compte vérifié' }, Bio.icon('sparkles', 18)) : null);
@@ -47,13 +59,14 @@
 
     const meta = h('div', { class: 'meta' },
       cfg.location ? chip('pin', cfg.location) : null,
-      chip('clock', '--:--', 'chip-time'),
+      cfg.timezone ? chip('clock', '--:--', 'chip-time') : null,
       chip('eye', '0', 'chip-views'),
       chip('hash', 'UID ' + cfg.uid));
-    // l'heure n'a de sens que si un fuseau est configuré
-    if (!cfg.timezone) meta.querySelector('#chip-time').remove();
     meta.querySelector('#chip-views').setAttribute('data-tip', 'Vues du profil');
-    if (cfg.joined) meta.querySelector('.chip:last-child').setAttribute('data-tip', 'Membre depuis ' + new Date(cfg.joined).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+    if (cfg.joined) {
+      const d = new Date(cfg.joined);
+      if (!isNaN(d)) meta.lastChild.setAttribute('data-tip', 'Membre depuis ' + d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+    }
 
     const presence = h('div', { class: 'presence', hidden: true });
 
@@ -79,23 +92,40 @@
       h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }),
       h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })));
 
+    // le lecteur est construit une seule fois (canvas + abonnements) puis réutilisé
+    UI.playerEl = UI.playerEl || UI.buildPlayer();
+    UI.playerEl.classList.add('reveal');
+    UI.playerEl.style.setProperty('--i', 7);
+
     card.append(
-      tools,
+      tools, banner,
       rev(h('header', { class: 'profile' }, avatar, h('div', { class: 'identity' }, name, badges, handle))),
-      rev(bio), rev(custom), rev(meta), rev(presence), rev(socials), rev(links), rev(UI.buildPlayer()), rev(foot));
+      rev(bio), rev(custom), rev(meta), rev(presence), rev(socials), rev(links), UI.playerEl, rev(foot));
+    i++;
+    foot.style.setProperty('--i', 8);
 
     UI.el = { card, img, status: card.querySelector('.status'), name: nameText, presence, custom, bio: bio.querySelector('.typed') };
     UI.applyCard();
-    UI.startTypewriter();
+    const bioKey = JSON.stringify(cfg.bio);
+    if (!rebuild || bioKey !== UI.bioKey) { UI.bioKey = bioKey; UI.startTypewriter(); }
+    else UI.el.bio.textContent = UI.lastTyped || '';
+    UI.tickClock();
   };
 
   UI.applyCard = function () {
-    const c = Bio.cfg.card, root = document.documentElement;
-    root.style.setProperty('--card-op', clamp(c.opacity, 0.05, 1));
-    root.style.setProperty('--card-blur', clamp(c.blur, 0, 60) + 'px');
-    root.style.setProperty('--card-radius', clamp(c.radius, 0, 48) + 'px');
-    root.classList.toggle('no-glitch', !Bio.cfg.effects.glitch);
-    root.classList.toggle('has-cursor', !!Bio.cfg.effects.cursor && Bio.util.finePointer());
+    const cfg = Bio.cfg, c = cfg.card, root = document.documentElement;
+    root.style.setProperty('--card-op', clamp(+c.opacity, 0.05, 1));
+    root.style.setProperty('--card-blur', clamp(+c.blur, 0, 60) + 'px');
+    root.style.setProperty('--card-radius', clamp(+c.radius, 0, 48) + 'px');
+    root.dataset.card = c.style;
+    root.dataset.border = c.border;
+    root.dataset.name = cfg.nameStyle;
+    root.dataset.links = cfg.linkStyle;
+    root.dataset.avatar = cfg.avatarShape;
+    root.dataset.ring = cfg.avatarRing;
+    root.classList.toggle('no-glitch', !cfg.effects.glitch);
+    root.classList.toggle('has-cursor', !!cfg.effects.cursor && Bio.util.finePointer());
+    Bio.applyFont(cfg.font);
   };
 
   UI.setName = function (n) {
@@ -109,7 +139,7 @@
   let twToken = 0;
   UI.startTypewriter = async function () {
     const token = ++twToken;
-    const el = UI.el.bio;
+    const el = { set textContent(v) { UI.lastTyped = v; UI.el.bio.textContent = v; } };
     const raw = Bio.cfg.bio;
     const lines = (Array.isArray(raw) ? raw : [raw]).map((s) => String(s).trim()).filter(Boolean);
     if (!lines.length) { el.textContent = ''; return; }
@@ -119,6 +149,7 @@
       const text = lines[k++ % lines.length];
       for (let c = 1; c <= text.length && token === twToken; c++) { el.textContent = text.slice(0, c); await sleep(48 + Math.random() * 40); }
       await sleep(2000);
+      if (lines.length === 1) { while (token === twToken) await sleep(1000); return; }
       for (let c = text.length - 1; c >= 0 && token === twToken; c--) { el.textContent = text.slice(0, c); await sleep(22); }
       await sleep(320);
     }
@@ -127,6 +158,7 @@
   /* ------------------------------------------------------------ présence */
   let presenceTick = null;
   UI.renderPresence = function (p) {
+    if (!UI.el) return;
     const { presence, status, custom } = UI.el;
     presence.textContent = '';
     presenceTick = null;
@@ -138,7 +170,7 @@
       custom.textContent = (p.custom.emoji ? p.custom.emoji + ' ' : '') + p.custom.text;
     } else custom.hidden = true;
 
-    if (Bio.cfg.discord.useAvatar && p.user && p.user.avatar && p.user.id) {
+    if (Bio.cfg.discord.useAvatar && p.user && p.user.avatar && p.user.id && /^\d+$/.test(p.user.id) && /^[\w-]+$/.test(p.user.avatar)) {
       UI.el.img.src = `https://cdn.discordapp.com/avatars/${p.user.id}/${p.user.avatar}.png?size=256`;
     }
 
@@ -216,6 +248,7 @@
 
     const sync = () => {
       const t = P.track;
+      if (!t) return;
       title.textContent = t.title;
       artist.textContent = t.artist;
       playBtn.textContent = '';
@@ -228,7 +261,7 @@
       root.classList.toggle('playing', P.playing);
       root.classList.toggle('seekable', t.kind === 'file');
       cover.textContent = '';
-      if (t.cover && /^(https?:|assets\/|\.\/|\/)/.test(t.cover)) cover.append(h('img', { src: safeUrl(t.cover), alt: '' }));
+      if (t.cover) cover.append(h('img', { src: safeUrl(t.cover), alt: '' }));
       else cover.append(Bio.icon('music', 22));
     };
     Bio.on('player', sync);
@@ -249,6 +282,7 @@
     };
     addEventListener('resize', size);
     Bio.on('entered', size);
+    Bio.on('config', () => setTimeout(size, 50));
     setTimeout(size, 50);
     let lastTime = '';
     Bio.frame((dt, t) => {
@@ -286,7 +320,7 @@
   UI.buildSplash = function () {
     const cfg = Bio.cfg, s = $('#splash');
     s.textContent = '';
-    if (!cfg.splash.enabled) { s.hidden = true; return; }
+    if (!cfg.splash.enabled || Bio.preview) { s.hidden = true; return; }
     s.append(h('div', { class: 'splash-inner' },
       h('div', { class: 'splash-orb' }),
       h('div', { class: 'splash-name', 'aria-hidden': 'true' }),
@@ -325,7 +359,7 @@
     if (!el) return;
     const cfg = Bio.cfg.views;
     let value = Number(cfg.base) || 0;
-    if (cfg.endpoint) {
+    if (cfg.endpoint && /^https?:\/\//.test(cfg.endpoint)) {
       try {
         const r = await fetch(cfg.endpoint);
         const j = await r.json();
@@ -335,44 +369,45 @@
       // compteur local : +1 par jour et par navigateur (un vrai compteur global exige un serveur → cfg.views.endpoint)
       const today = new Date().toDateString();
       let n = store.get('myviews', 0);
-      if (store.get('lastview', '') !== today) { n++; store.set('myviews', n); store.set('lastview', today); }
+      if (!Bio.preview && store.get('lastview', '') !== today) { n++; store.set('myviews', n); store.set('lastview', today); }
       value += n;
     }
     const fmt = new Intl.NumberFormat('fr-FR');
+    UI.viewsShown = true;
+    UI.viewsText = fmt.format(value);
     if (Bio.util.reduceMotion()) { el.textContent = fmt.format(value); return; }
     const t0 = performance.now(), dur = 1400;
     const step = (now) => {
       const k = clamp((now - t0) / dur, 0, 1);
       el.textContent = fmt.format(Math.round(value * easeOutExpo(k)));
-      if (k < 1) requestAnimationFrame(step);
+      if (k < 1 && document.contains(el)) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   };
 
-  UI.initClock = function () {
+  UI.tickClock = function () {
     const cfg = Bio.cfg;
     const el = $('#chip-time .chip-t');
     if (!el || !cfg.timezone) return;
-    let fmt;
-    try { fmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: cfg.timezone }); } catch (e) { fmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
-    const upd = () => { el.textContent = fmt.format(new Date()); };
-    upd();
-    setInterval(upd, 15000);
+    let s;
+    try { s = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: cfg.timezone }).format(new Date()); }
+    catch (e) { s = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date()); }
+    el.textContent = s;
     el.parentElement.setAttribute('data-tip', 'Heure locale · ' + cfg.timezone);
   };
 
   /* ------------------------------------------------------- titre d'onglet */
   UI.initTitle = async function () {
-    const cfg = Bio.cfg;
-    const base = cfg.pageTitle || '@' + cfg.username;
-    document.title = base;
-    if (Bio.util.reduceMotion()) return;
+    const base = () => Bio.cfg.pageTitle || '@' + Bio.cfg.username;
+    document.title = base();
+    if (Bio.util.reduceMotion() || Bio.preview) return;
     await sleep(1200);
     for (;;) {
-      for (let i = 1; i <= base.length; i++) { document.title = base.slice(0, i) + '▎'; await sleep(160); }
-      document.title = base;
+      const b = base();
+      for (let i = 1; i <= b.length; i++) { document.title = b.slice(0, i) + '▎'; await sleep(160); }
+      document.title = b;
       await sleep(4500);
-      for (let i = base.length - 1; i >= 1; i--) { document.title = base.slice(0, i) + '▎'; await sleep(90); }
+      for (let i = b.length - 1; i >= 1; i--) { document.title = b.slice(0, i) + '▎'; await sleep(90); }
       await sleep(400);
     }
   };
@@ -402,7 +437,7 @@
     });
   };
 
-  /* -------------------------------------------- curseur + magnétisme + clic */
+  /* ------------------------------------- curseur + magnétisme + clic + ripple */
   UI.initPointer = function () {
     const root = $('#cursor');
     const fine = Bio.util.finePointer();
@@ -437,9 +472,15 @@
       el.style.transform = `translate(${(dx * 9).toFixed(1)}px, ${(dy * 7).toFixed(1)}px)`;
     }, { passive: true });
     document.addEventListener('mouseleave', release);
-    // explosion d'étincelles au clic sur un lien
+    // explosion d'étincelles au clic sur un lien + onde (ripple)
+    const ripples = $('#ripples');
     addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('.link,.social,.p-btn,.tool')) Bio.fx.burst(e.clientX, e.clientY, 14, { speed: 150 });
+      if (Bio.cfg.effects.ripple && ripples && !Bio.util.reduceMotion() && !(e.target.closest && e.target.closest('.overlay'))) {
+        const r = h('span', { class: 'ripple', style: { left: e.clientX + 'px', top: e.clientY + 'px' } });
+        ripples.append(r);
+        setTimeout(() => r.remove(), 900);
+      }
     });
   };
 
@@ -447,24 +488,25 @@
   UI.onCfg = function (path) {
     if (path === 'displayName') UI.setName(Bio.cfg.displayName);
     else if (path === 'bio') UI.startTypewriter();
-    else if (path.startsWith('card.') || path.startsWith('effects.')) UI.applyCard();
+    else if (/^(card\.|effects\.|font|nameStyle|linkStyle|avatarShape|avatarRing)/.test(path)) UI.applyCard();
   };
 
   UI.init = function () {
     UI.build();
     UI.buildSplash();
-    UI.initClock();
     UI.initTilt();
     UI.initPointer();
     UI.initTitle();
+    setInterval(UI.tickClock, 15000);
     Bio.on('presence', UI.renderPresence);
     Bio.on('cfg', UI.onCfg);
     // pas d'écran d'entrée : on affiche directement (sans musique automatique, le navigateur la bloquerait)
-    if (!Bio.cfg.splash.enabled) UI.enter(false);
+    if (!Bio.cfg.splash.enabled || Bio.preview) UI.enter(false);
     // glitch périodique du nom
     setInterval(() => {
       if (!Bio.cfg.effects.glitch || !UI.entered || Bio.util.reduceMotion()) return;
       const n = $('.name-text');
+      if (!n) return;
       n.classList.add('glitching');
       setTimeout(() => n.classList.remove('glitching'), 520);
     }, 6500);

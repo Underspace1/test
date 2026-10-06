@@ -1,5 +1,6 @@
 /* ==========================================================================
-   util.js — noyau : événements, boucle d'animation, helpers DOM, icônes, thèmes
+   util.js — noyau : événements, boucle d'animation, helpers DOM, icônes,
+   thèmes, polices, modèles, valeurs par défaut
    ========================================================================== */
 (function () {
   'use strict';
@@ -37,6 +38,11 @@
   };
   U.reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   U.finePointer = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
+  U.debounce = (fn, ms) => {
+    let t = 0;
+    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  };
+  U.uid = () => Math.random().toString(36).slice(2, 9);
 
   /* stockage tolérant (navigation privée, file://, etc.) */
   U.store = {
@@ -50,13 +56,18 @@
     del(k) { try { localStorage.removeItem('bio:' + k); } catch (e) { /* ignore */ } },
   };
 
-  /* URL sûre : http(s), mailto, tel ou relatif. Tout le reste (javascript:, data:…) est rejeté. */
+  /* URL sûre : http(s), mailto, tel, data:image (avatars importés) ou relatif. Le reste est rejeté. */
   U.safeUrl = (url) => {
     const s = String(url || '').trim();
     const m = s.match(/^([a-z][a-z0-9+.-]*):/i);
-    if (m && !['http', 'https', 'mailto', 'tel'].includes(m[1].toLowerCase())) return '#';
+    if (m) {
+      const scheme = m[1].toLowerCase();
+      if (scheme === 'data') return /^data:image\/(png|jpe?g|gif|webp|svg\+xml|avif);base64,/i.test(s) ? s : '#';
+      if (!['http', 'https', 'mailto', 'tel'].includes(scheme)) return '#';
+    }
     return s || '#';
   };
+  U.cssUrl = (url) => 'url("' + U.safeUrl(url).replace(/["\\]/g, '') + '")';
 
   U.deepMerge = (base, ...rest) => {
     const out = Array.isArray(base) ? base.slice() : Object.assign({}, base);
@@ -67,7 +78,7 @@
         if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
           out[k] = U.deepMerge(out[k], v);
         } else {
-          out[k] = Array.isArray(v) ? v.slice() : v;
+          out[k] = Array.isArray(v) ? v.map((x) => (x && typeof x === 'object' ? U.deepMerge({}, x) : x)) : v;
         }
       }
     }
@@ -119,6 +130,16 @@
     }
   };
 
+  U.download = (name, text, type = 'text/javascript') => {
+    const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const a = U.h('a', { href: url, download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
   U.toast = (msg, icon) => {
     const box = U.$('#toasts');
     if (!box) return;
@@ -146,13 +167,7 @@
     const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
     return U.rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
   };
-  U.rgbToHue = (r, g, b) => {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-    if (!d) return 0;
-    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return ((h * 60) + 360) % 360;
-  };
+  U.isHex = (s) => /^#[0-9a-f]{6}$/i.test(String(s || ''));
 
   /* ---------- boucle d'animation unique ---------- */
   const subs = [];
@@ -183,6 +198,8 @@
     ember: { label: 'Braise', a: '#fb923c', b: '#f43f5e' },
     mint: { label: 'Menthe', a: '#34d399', b: '#22d3ee' },
     sakura: { label: 'Sakura', a: '#f9a8d4', b: '#c084fc' },
+    gold: { label: 'Or', a: '#fcd34d', b: '#f97316' },
+    ice: { label: 'Glace', a: '#e0f2fe', b: '#7dd3fc' },
     mono: { label: 'Mono', a: '#d4d4d8', b: '#71717a' },
   };
   Bio.colors = { a: [167, 139, 250], b: [236, 72, 153] };
@@ -198,10 +215,65 @@
     if (meta) meta.content = a;
     Bio.emit('theme');
   };
-  Bio.applyTheme = (cfg) => {
+  Bio.themeColors = (cfg) => {
     const t = Bio.themes[cfg.theme] || Bio.themes.violet;
-    Bio.applyColors(cfg.accent || t.a, cfg.accent2 || t.b);
+    return { a: U.isHex(cfg.accent) ? cfg.accent : t.a, b: U.isHex(cfg.accent2) ? cfg.accent2 : t.b };
   };
+  Bio.applyTheme = (cfg) => {
+    const c = Bio.themeColors(cfg);
+    Bio.applyColors(c.a, c.b);
+  };
+
+  /* ---------- polices (Google Fonts, chargées à la demande) ---------- */
+  Bio.fonts = {
+    space: { label: 'Space Grotesk', display: '"Space Grotesk"', body: '"Inter"', gf: 'Space+Grotesk:wght@500;600;700' },
+    inter: { label: 'Inter', display: '"Inter"', body: '"Inter"', gf: '' },
+    sora: { label: 'Sora', display: '"Sora"', body: '"Sora"', gf: 'Sora:wght@400;500;600;700' },
+    outfit: { label: 'Outfit', display: '"Outfit"', body: '"Outfit"', gf: 'Outfit:wght@400;500;600;700' },
+    poppins: { label: 'Poppins', display: '"Poppins"', body: '"Poppins"', gf: 'Poppins:wght@400;500;600;700' },
+    syne: { label: 'Syne', display: '"Syne"', body: '"Inter"', gf: 'Syne:wght@500;600;700;800' },
+    playfair: { label: 'Playfair Display', display: '"Playfair Display"', body: '"Inter"', gf: 'Playfair+Display:wght@500;600;700' },
+    mono: { label: 'JetBrains Mono', display: '"JetBrains Mono"', body: '"JetBrains Mono"', gf: '' },
+  };
+  const loadedFonts = new Set(['space', 'inter', 'mono']);
+  Bio.applyFont = (key) => {
+    const f = Bio.fonts[key] || Bio.fonts.space;
+    if (f.gf && !loadedFonts.has(key)) {
+      loadedFonts.add(key);
+      document.head.append(U.h('link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap' }));
+    }
+    const root = document.documentElement.style;
+    root.setProperty('--display', f.display + ', "Inter", system-ui, sans-serif');
+    root.setProperty('--font', f.body + ', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif');
+  };
+
+  /* ---------- modèles prêts à l'emploi ---------- */
+  Bio.presets = [
+    { id: 'nebula', label: 'Nébuleuse', desc: 'Fluide WebGL, verre, lucioles', colors: ['#a78bfa', '#ec4899'],
+      cfg: { theme: 'violet', accent: '', accent2: '', font: 'space', nameStyle: 'shimmer', linkStyle: 'glass', avatarRing: 'gradient', avatarShape: 'circle', banner: '',
+        background: { type: 'shader', dim: 0.25, blur: 0 }, card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
+        decor: { orbs: true, noise: true, vignette: true, scanlines: false }, effects: { particles: 'fireflies', spotlight: true } } },
+    { id: 'aurora', label: 'Aurore', desc: 'Voiles boréals, menthe & cyan', colors: ['#34d399', '#22d3ee'],
+      cfg: { theme: 'mint', accent: '', accent2: '', font: 'sora', nameStyle: 'neon', linkStyle: 'outline', avatarRing: 'pulse', avatarShape: 'circle', banner: '',
+        background: { type: 'aurora', dim: 0.2, blur: 0 }, card: { style: 'glass', border: 'gradient', opacity: 0.4, blur: 26, radius: 24 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: false }, effects: { particles: 'snow', spotlight: true } } },
+    { id: 'synthwave', label: 'Synthwave', desc: 'Grille rétro, néons, scanlines', colors: ['#f472b6', '#22d3ee'],
+      cfg: { theme: 'violet', accent: '#f472b6', accent2: '#22d3ee', font: 'syne', nameStyle: 'neon', linkStyle: 'neon', avatarRing: 'gradient', avatarShape: 'hexagon', banner: 'gradient',
+        background: { type: 'grid', dim: 0.1, blur: 0 }, card: { style: 'neon', border: 'none', opacity: 0.7, blur: 16, radius: 18 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: true }, effects: { particles: 'shooting', spotlight: false } } },
+    { id: 'minimal', label: 'Minimal', desc: 'Sobre, net, sans distraction', colors: ['#e4e4e7', '#71717a'],
+      cfg: { theme: 'mono', accent: '', accent2: '', font: 'inter', nameStyle: 'plain', linkStyle: 'solid', avatarRing: 'none', avatarShape: 'rounded', banner: '',
+        background: { type: 'none', dim: 0, blur: 0 }, card: { style: 'solid', border: 'none', opacity: 1, blur: 0, radius: 20 },
+        decor: { orbs: false, noise: false, vignette: false, scanlines: false }, effects: { particles: 'none', spotlight: false, tilt: false, trail: false, glitch: false } } },
+    { id: 'sakura', label: 'Sakura', desc: 'Pastel, bokeh, douceur', colors: ['#f9a8d4', '#c084fc'],
+      cfg: { theme: 'sakura', accent: '', accent2: '', font: 'playfair', nameStyle: 'rainbow', linkStyle: 'glass', avatarRing: 'gradient', avatarShape: 'circle', banner: 'gradient',
+        background: { type: 'aurora', dim: 0.3, blur: 0 }, card: { style: 'glass', border: 'gradient', opacity: 0.5, blur: 30, radius: 32 },
+        decor: { orbs: true, noise: false, vignette: true, scanlines: false }, effects: { particles: 'bokeh', spotlight: true } } },
+    { id: 'gold', label: 'Luxe', desc: 'Or & noir, étoiles filantes', colors: ['#fcd34d', '#f97316'],
+      cfg: { theme: 'gold', accent: '', accent2: '', font: 'playfair', nameStyle: 'shimmer', linkStyle: 'outline', avatarRing: 'gradient', avatarShape: 'circle', banner: '',
+        background: { type: 'shader', dim: 0.45, blur: 0 }, card: { style: 'outline', border: 'gradient', opacity: 0.3, blur: 18, radius: 22 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: false }, effects: { particles: 'shooting', spotlight: true } } },
+  ];
 
   /* ---------- icônes ---------- */
   // Icônes d'interface : tracés "stroke" 24×24 (style Lucide). Contenu statique uniquement.
@@ -232,6 +304,7 @@
     code: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
     flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     headphones: '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3ZM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3Z"/>',
     palette: '<circle cx="13.5" cy="6.5" r="1" fill="currentColor"/><circle cx="17.5" cy="10.5" r="1" fill="currentColor"/><circle cx="8.5" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="12.5" r="1" fill="currentColor"/><path d="M12 22a10 10 0 1 1 10-10c0 3-2 4-4 4h-2a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 22Z"/>',
@@ -243,7 +316,48 @@
     gamepad: '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/><rect x="2" y="6" width="20" height="12" rx="4"/>',
     command: '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3Z"/>',
     reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    trash: '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
+    grip: '<circle cx="9" cy="6" r="1.2" fill="currentColor"/><circle cx="15" cy="6" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="15" cy="12" r="1.2" fill="currentColor"/><circle cx="9" cy="18" r="1.2" fill="currentColor"/><circle cx="15" cy="18" r="1.2" fill="currentColor"/>',
+    up: '<path d="m18 15-6-6-6 6"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
+    monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    upload: '<path d="M12 16V4M6 10l6-6 6 6M4 20h16"/>',
+    download: '<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>',
+    layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5M3 17l9 5 9-5"/>',
+    type: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+    external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    duplicate: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    rocket: '<path d="M5 15c-1.5 1.3-2 5-2 5s3.7-.5 5-2M14 4c3 0 6 3 6 6l-8 8-4-4 6-10Z"/><circle cx="15" cy="9" r="1.5"/><path d="m9 14-2-2M12 17l-2-2"/>',
+    coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8ZM6 2v2M10 2v2M14 2v2"/>',
+    camera: '<path d="M4 8a2 2 0 0 1 2-2h2l2-2h4l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/><circle cx="12" cy="13" r="3.5"/>',
+    video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15ZM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+    shield: '<path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3Z"/>',
+    gift: '<path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7ZM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7Z"/>',
+    cart: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+    pen: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z"/>',
+    mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
+    cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>',
+    leaf: '<path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 16-10-1 12-5 17-9 17Z"/><path d="M4 20c4-4 8-7 12-9"/>',
+    skull: '<circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><path d="M8 20v2h8v-2M12.5 17h-1l-.5-2h2l-.5 2Z"/><path d="M16 20a2 2 0 0 0 2-2v-1.3A8 8 0 1 0 6 16.7V18a2 2 0 0 0 2 2h8Z"/>',
+    ghost: '<path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 3 2.5-3 2.5 3 2.5-3 3 3V10a8 8 0 0 0-8-8Z"/><circle cx="9" cy="11" r="1" fill="currentColor"/><circle cx="15" cy="11" r="1" fill="currentColor"/>',
+    planet: '<circle cx="12" cy="12" r="6"/><path d="M4.5 9.5c-3 2.5-2.2 4.4-1.5 5 1.7 1.7 8.5-.5 14.5-6s7.7-11.3 6-13c-.6-.6-2.5-1.4-5 1.5"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/>',
+    paint: '<path d="M19 3h-8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h8V3Z"/><path d="M11 6H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h7"/><path d="M12 12v3a2 2 0 0 1-2 2H8v4h4"/>',
+    briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
+    dollar: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.2A8 8 0 1 1 21 12Z"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    home: '<path d="m3 11 9-8 9 8v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9Z"/>',
+    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6"/>',
+    bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" fill="currentColor"/>',
   };
+  Bio.uiIcons = Object.keys(UI);
   Bio.icon = (name, size = 20) => {
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
@@ -275,6 +389,7 @@
     username: 'username',
     displayName: 'Display Name',
     avatar: 'assets/avatar.svg',
+    banner: '',
     verified: true,
     bio: ['Hello world.'],
     location: '',
@@ -282,13 +397,19 @@
     uid: 1,
     joined: '',
     pageTitle: '',
+    font: 'space',
+    nameStyle: 'shimmer',
+    linkStyle: 'glass',
+    avatarShape: 'circle',
+    avatarRing: 'gradient',
     splash: { enabled: true, text: 'cliquer pour entrer' },
     background: { type: 'shader', src: '', dim: 0.25, blur: 0 },
     theme: 'violet',
     accent: '',
     accent2: '',
-    card: { opacity: 0.55, blur: 22, radius: 28 },
-    effects: { particles: 'fireflies', tilt: true, cursor: true, trail: true, glitch: true },
+    card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
+    decor: { orbs: true, noise: true, vignette: true, scanlines: false },
+    effects: { particles: 'fireflies', tilt: true, cursor: true, trail: true, glitch: true, spotlight: true, ripple: true },
     discord: { id: '', demo: true, useAvatar: false, tag: '' },
     views: { base: 0, endpoint: '' },
     music: { autoplay: true, volume: 0.55, tracks: [] },
@@ -298,4 +419,31 @@
     studio: true,
     terminal: true,
   };
+
+  /* valide les valeurs d'énumération pour éviter un état incohérent */
+  Bio.enums = {
+    font: Object.keys(Bio.fonts),
+    nameStyle: ['shimmer', 'neon', 'rainbow', 'plain'],
+    linkStyle: ['glass', 'solid', 'outline', 'neon'],
+    avatarShape: ['circle', 'rounded', 'hexagon'],
+    avatarRing: ['gradient', 'pulse', 'none'],
+    'background.type': ['shader', 'aurora', 'grid', 'video', 'image', 'none'],
+    'card.style': ['glass', 'solid', 'outline', 'neon'],
+    'card.border': ['spotlight', 'gradient', 'none'],
+    'effects.particles': ['fireflies', 'snow', 'stars', 'shooting', 'bokeh', 'rain', 'none'],
+    theme: Object.keys(Bio.themes),
+  };
+  Bio.normalize = (cfg) => {
+    const out = U.deepMerge(Bio.defaults, cfg || {});
+    for (const path of Object.keys(Bio.enums)) {
+      const v = U.getPath(out, path);
+      if (!Bio.enums[path].includes(v)) U.setPath(out, path, U.getPath(Bio.defaults, path));
+    }
+    if (!Array.isArray(out.bio)) out.bio = [String(out.bio || '')];
+    ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
+    if (!Array.isArray(out.music.tracks)) out.music.tracks = [];
+    return out;
+  };
+
+  Bio.serialize = (cfg) => '/* Config générée par le dashboard — remplace le contenu de config.js */\nwindow.BIO_CONFIG = ' + JSON.stringify(cfg, null, 2) + ';\n';
 })();

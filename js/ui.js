@@ -1,11 +1,11 @@
 /* ==========================================================================
-   ui.js — carte de profil, écran d'entrée, lecteur, tilt 3D, curseur,
-   magnétisme, ripple, mode aperçu (dashboard)
+   ui.js — widgets empilés (profil, à propos, vues, Discord, musique, liens),
+   écran d'entrée, tilt, curseur, magnétisme, ripple, mode aperçu
    ========================================================================== */
 (function () {
   'use strict';
   const Bio = window.Bio;
-  const { $, h, clamp, sleep, fmtTime, store, safeUrl, cssUrl } = Bio.util;
+  const { $, $$, h, clamp, sleep, fmtTime, store, safeUrl, cssUrl } = Bio.util;
   const UI = (Bio.ui = { entered: false });
 
   Bio.preview = /[?&]preview\b/.test(location.search);
@@ -13,66 +13,58 @@
   const STATUS_FR = { online: 'En ligne', idle: 'Absent', dnd: 'Ne pas déranger', offline: 'Hors ligne' };
 
   /* ------------------------------------------------------------- helpers */
-  function chip(icon, text, id) {
-    return h('span', { class: 'chip', id }, Bio.icon(icon, 14), h('span', { class: 'chip-t', text }));
-  }
   function toolBtn(icon, label, onClick) {
-    return h('button', { class: 'tool', type: 'button', 'aria-label': label, 'data-tip': label, 'data-tip-side': 'bottom', onclick: onClick }, Bio.icon(icon, 17));
+    return h('button', { class: 'tool', type: 'button', 'aria-label': label, 'data-tip': label, 'data-tip-side': 'bottom', onclick: onClick }, Bio.icon(icon, 16));
   }
   function easeOutExpo(x) { return x === 1 ? 1 : 1 - Math.pow(2, -10 * x); }
+  const widget = (id, ...kids) => h('section', { class: 'widget w-' + id, 'data-widget': id }, ...kids);
 
-  /* --------------------------------------------------------------- carte */
-  UI.build = function () {
-    const cfg = Bio.cfg;
-    const card = $('#card');
-    const rebuild = !!UI.el;
-    card.classList.toggle('rebuilt', rebuild);
-    card.textContent = '';
-    let i = 0;
-    const rev = (el) => { el.classList.add('reveal'); el.style.setProperty('--i', i++); return el; };
-
-    const tools = h('div', { class: 'card-tools' },
+  /* ------------------------------------------------------------- outils */
+  UI.buildTools = function () {
+    const cfg = Bio.cfg, box = $('#tools');
+    box.textContent = '';
+    if (Bio.preview) { box.hidden = true; return; }
+    box.hidden = false;
+    box.append(
       toolBtn('search', 'Palette de commandes · Ctrl+K', () => Bio.overlays.open('palette')),
       cfg.terminal ? toolBtn('terminal', 'Terminal · `', () => Bio.overlays.open('terminal')) : null,
       cfg.studio ? toolBtn('sliders', 'Réglages rapides · E', () => Bio.overlays.open('studio')) : null);
+  };
 
+  /* ------------------------------------------------------------- widgets */
+  UI.buildProfile = function () {
+    const cfg = Bio.cfg;
     let banner = null;
     if (cfg.banner) {
       banner = h('div', { class: 'banner' + (cfg.banner === 'gradient' ? ' gradient' : '') });
       if (cfg.banner !== 'gradient') banner.style.backgroundImage = cssUrl(cfg.banner);
     }
-    card.classList.toggle('has-banner', !!banner);
 
-    const img = h('img', { src: safeUrl(cfg.avatar), alt: 'Avatar de ' + cfg.displayName, width: 112, height: 112, draggable: 'false' });
+    const img = h('img', { src: safeUrl(cfg.avatar), alt: 'Avatar de ' + cfg.displayName, width: 120, height: 120, draggable: 'false' });
     img.addEventListener('error', () => { if (!img.dataset.fb) { img.dataset.fb = 1; img.src = 'assets/avatar.svg'; } });
     const avatar = h('div', { class: 'avatar' }, h('span', { class: 'ring' }), h('span', { class: 'frame' }, img), h('span', { class: 'status', 'data-status': 'none' }));
 
     const nameText = h('span', { class: 'name-text', 'data-text': cfg.displayName, text: cfg.displayName });
-    const name = h('h1', { class: 'name' }, nameText, cfg.verified ? h('span', { class: 'verified', 'data-tip': 'Compte vérifié' }, Bio.icon('sparkles', 18)) : null);
+    const name = h('h1', { class: 'name' }, nameText, cfg.verified ? h('span', { class: 'verified', 'data-tip': 'Compte vérifié' }, Bio.icon('sparkles', 17)) : null);
 
-    const badges = h('div', { class: 'badges' }, (cfg.badges || []).map((b) =>
-      h('span', { class: 'badge', 'data-tip': b.label, tabindex: '0', role: 'img', 'aria-label': b.label }, Bio.icon(b.icon, 15))));
+    const badges = (cfg.badges || []).length ? h('div', { class: 'badges' }, cfg.badges.map((b) =>
+      h('span', { class: 'badge', 'data-tip': b.label, tabindex: '0', role: 'img', 'aria-label': b.label }, Bio.icon(b.icon, 15)))) : null;
 
-    const handle = h('div', { class: 'handle', text: '@' + cfg.username });
     const bio = h('p', { class: 'bio', 'aria-live': 'off' }, h('span', { class: 'typed' }), h('span', { class: 'caret' }));
-    const custom = h('div', { class: 'custom-status', hidden: true });
+    const from = cfg.location ? h('div', { class: 'from' }, Bio.icon('pin', 13), h('span', { text: cfg.location })) : null;
 
-    const meta = h('div', { class: 'meta' },
-      cfg.location ? chip('pin', cfg.location) : null,
-      cfg.timezone ? chip('clock', '--:--', 'chip-time') : null,
-      chip('eye', '0', 'chip-views'),
-      chip('hash', 'UID ' + cfg.uid));
-    meta.querySelector('#chip-views').setAttribute('data-tip', 'Vues du profil');
-    if (cfg.joined) {
-      const d = new Date(cfg.joined);
-      if (!isNaN(d)) meta.lastChild.setAttribute('data-tip', 'Membre depuis ' + d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
-    }
+    const metaBits = [];
+    if (cfg.timezone) metaBits.push(h('span', { class: 'm-time', id: 'chip-time' }, Bio.icon('clock', 12), h('span', { class: 'chip-t', text: '--:--' })));
+    metaBits.push(h('span', { text: '@' + cfg.username }));
+    metaBits.push(h('span', { text: 'UID ' + cfg.uid }));
+    if (cfg.joined) { const d = new Date(cfg.joined); if (!isNaN(d)) metaBits.push(h('span', { text: 'depuis ' + d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) })); }
+    const meta = h('div', { class: 'meta' }, metaBits.flatMap((b, i) => (i ? [h('i', { class: 'sep' }), b] : [b])));
 
-    const presence = h('div', { class: 'presence', hidden: true });
-
-    const socials = h('div', { class: 'socials' }, (cfg.socials || []).map((s) => {
-      const attrs = { class: 'social', 'data-mag': '', 'data-tip': s.label, 'aria-label': s.label };
-      const ico = Bio.icon(s.icon, 22);
+    const limit = cfg.socialsLimit > 0 ? cfg.socialsLimit : Infinity;
+    const list = cfg.socials || [];
+    const socials = h('div', { class: 'socials' }, list.map((s, i) => {
+      const attrs = { class: 'social' + (i >= limit ? ' extra' : ''), 'data-mag': '', 'data-tip': s.label, 'aria-label': s.label };
+      const ico = Bio.icon(s.icon, 24);
       if (s.copy) {
         return h('button', Object.assign(attrs, { type: 'button', onclick: async () => {
           const ok = await Bio.util.copy(s.copy);
@@ -81,34 +73,95 @@
       }
       return h('a', Object.assign(attrs, { href: safeUrl(s.url), target: '_blank', rel: 'noopener noreferrer' }), ico);
     }));
+    if (list.length > limit) {
+      const more = h('button', { class: 'social more', type: 'button', 'aria-label': 'Voir plus', 'data-tip': '+' + (list.length - limit) }, Bio.icon('plus', 20));
+      more.addEventListener('click', () => {
+        const open = socials.classList.toggle('expanded');
+        more.textContent = '';
+        more.append(Bio.icon(open ? 'close' : 'plus', 20));
+        more.setAttribute('data-tip', open ? 'Réduire' : '+' + (list.length - limit));
+      });
+      socials.append(more);
+    }
 
-    const links = h('nav', { class: 'links', 'aria-label': 'Liens' }, (cfg.links || []).map((l) =>
-      h('a', { class: 'link', 'data-mag': '', href: safeUrl(l.url), target: /^mailto:|^tel:/.test(l.url || '') ? null : '_blank', rel: 'noopener noreferrer' },
+    const el = widget('profile', banner, avatar, name, badges, bio, from, meta, list.length ? socials : null);
+    el.classList.toggle('has-banner', !!banner);
+    UI.el.img = img;
+    UI.el.status = avatar.querySelector('.status');
+    UI.el.name = nameText;
+    UI.el.bio = bio.querySelector('.typed');
+    return el;
+  };
+
+  UI.buildAbout = function () {
+    const t = (Bio.cfg.about || '').trim();
+    if (!t) return null;
+    return widget('about', h('h3', { text: 'À propos' }), h('p', { text: t }));
+  };
+
+  UI.buildViews = function () {
+    const el = widget('views', Bio.icon('eye', 16), h('span', { class: 'chip-t', id: 'chip-views', text: UI.viewsText || '0' }));
+    el.setAttribute('data-tip', 'Vues du profil');
+    return el;
+  };
+
+  UI.buildDiscord = function () {
+    const img = h('img', { alt: '', draggable: 'false' });
+    img.addEventListener('error', () => { img.src = safeUrl(Bio.cfg.avatar); });
+    const el = widget('discord',
+      h('div', { class: 'dc-avatar' }, img, h('span', { class: 'dc-status', 'data-status': 'offline' })),
+      h('div', { class: 'dc-body' },
+        h('div', { class: 'dc-name' }, h('b', { class: 'dc-user' }), h('span', { class: 'dc-check', 'data-tip': 'Discord' }, Bio.icon('discord', 14))),
+        h('div', { class: 'dc-sub' }),
+        h('div', { class: 'dc-act', hidden: true })));
+    el.hidden = true;
+    UI.el.discord = { el, img, status: el.querySelector('.dc-status'), user: el.querySelector('.dc-user'), sub: el.querySelector('.dc-sub'), act: el.querySelector('.dc-act') };
+    return el;
+  };
+
+  UI.buildLinks = function () {
+    const links = Bio.cfg.links || [];
+    if (!links.length) return null;
+    return h('nav', { class: 'links', 'aria-label': 'Liens' }, links.map((l) =>
+      h('a', { class: 'widget link', 'data-mag': '', href: safeUrl(l.url), target: /^mailto:|^tel:/.test(l.url || '') ? null : '_blank', rel: 'noopener noreferrer' },
         h('span', { class: 'l-ico' }, Bio.icon(l.icon || 'link', 20)),
         h('span', { class: 'l-txt' }, h('b', { text: l.label }), l.sub ? h('small', { text: l.sub }) : null),
         h('span', { class: 'l-go' }, Bio.icon('arrow', 16)))));
+  };
 
-    const foot = h('footer', { class: 'foot' },
-      h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }),
-      h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })));
+  /* ------------------------------------------------------------- colonne */
+  UI.build = function () {
+    const cfg = Bio.cfg;
+    const col = $('#column');
+    const rebuild = !!UI.el;
+    col.classList.toggle('rebuilt', rebuild);
+    col.textContent = '';
+    UI.el = { col };
+    let i = 0;
+    const rev = (el) => { el.classList.add('reveal'); el.style.setProperty('--i', i++); return el; };
 
-    // le lecteur est construit une seule fois (canvas + abonnements) puis réutilisé
-    UI.playerEl = UI.playerEl || UI.buildPlayer();
-    UI.playerEl.classList.add('reveal');
-    UI.playerEl.style.setProperty('--i', 7);
+    const builders = {
+      profile: UI.buildProfile,
+      about: UI.buildAbout,
+      views: UI.buildViews,
+      discord: UI.buildDiscord,
+      music: () => { UI.playerEl = UI.playerEl || UI.buildPlayer(); return UI.playerEl; },
+      links: UI.buildLinks,
+    };
+    (cfg.layout || []).forEach((id) => {
+      const b = builders[id];
+      const el = b && b();
+      if (el) col.append(rev(el));
+    });
+    col.append(rev(h('footer', { class: 'foot' }, h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }), h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })))));
 
-    card.append(
-      tools, banner,
-      rev(h('header', { class: 'profile' }, avatar, h('div', { class: 'identity' }, name, badges, handle))),
-      rev(bio), rev(custom), rev(meta), rev(presence), rev(socials), rev(links), UI.playerEl, rev(foot));
-    i++;
-    foot.style.setProperty('--i', 8);
-
-    UI.el = { card, img, status: card.querySelector('.status'), name: nameText, presence, custom, bio: bio.querySelector('.typed') };
+    UI.buildTools();
     UI.applyCard();
     const bioKey = JSON.stringify(cfg.bio);
-    if (!rebuild || bioKey !== UI.bioKey) { UI.bioKey = bioKey; UI.startTypewriter(); }
-    else UI.el.bio.textContent = UI.lastTyped || '';
+    if (UI.el.bio) {
+      if (!rebuild || bioKey !== UI.bioKey) { UI.bioKey = bioKey; UI.startTypewriter(); }
+      else UI.el.bio.textContent = UI.lastTyped || '';
+    }
     UI.tickClock();
   };
 
@@ -129,8 +182,7 @@
   };
 
   UI.setName = function (n) {
-    UI.el.name.textContent = n;
-    UI.el.name.setAttribute('data-text', n);
+    if (UI.el.name) { UI.el.name.textContent = n; UI.el.name.setAttribute('data-text', n); }
     const sn = $('.splash-name');
     if (sn && !UI.entered) sn.textContent = n;
   };
@@ -139,7 +191,7 @@
   let twToken = 0;
   UI.startTypewriter = async function () {
     const token = ++twToken;
-    const el = { set textContent(v) { UI.lastTyped = v; UI.el.bio.textContent = v; } };
+    const el = { set textContent(v) { UI.lastTyped = v; if (UI.el.bio) UI.el.bio.textContent = v; } };
     const raw = Bio.cfg.bio;
     const lines = (Array.isArray(raw) ? raw : [raw]).map((s) => String(s).trim()).filter(Boolean);
     if (!lines.length) { el.textContent = ''; return; }
@@ -148,7 +200,7 @@
     while (token === twToken) {
       const text = lines[k++ % lines.length];
       for (let c = 1; c <= text.length && token === twToken; c++) { el.textContent = text.slice(0, c); await sleep(48 + Math.random() * 40); }
-      await sleep(2000);
+      await sleep(2200);
       if (lines.length === 1) { while (token === twToken) await sleep(1000); return; }
       for (let c = text.length - 1; c >= 0 && token === twToken; c--) { el.textContent = text.slice(0, c); await sleep(22); }
       await sleep(320);
@@ -159,23 +211,28 @@
   let presenceTick = null;
   UI.renderPresence = function (p) {
     if (!UI.el) return;
-    const { presence, status, custom } = UI.el;
-    presence.textContent = '';
+    const cfg = Bio.cfg;
+    if (UI.el.status) UI.el.status.dataset.status = p ? p.status : 'none';
+    const dc = UI.el.discord;
     presenceTick = null;
-    if (!p) { status.dataset.status = 'none'; presence.hidden = true; custom.hidden = true; return; }
-    status.dataset.status = p.status;
-    status.setAttribute('data-tip', STATUS_FR[p.status] || '');
-    if (p.custom && (p.custom.text || p.custom.emoji)) {
-      custom.hidden = false;
-      custom.textContent = (p.custom.emoji ? p.custom.emoji + ' ' : '') + p.custom.text;
-    } else custom.hidden = true;
+    if (!dc) return;
+    if (!p) { dc.el.hidden = true; return; }
+    dc.el.hidden = false;
+    dc.status.dataset.status = p.status;
+    dc.status.setAttribute('data-tip', STATUS_FR[p.status] || '');
+    const u = p.user;
+    const ok = u && u.id && /^\d+$/.test(u.id) && u.avatar && /^[\w-]+$/.test(u.avatar);
+    const dcAvatar = ok ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128` : safeUrl(cfg.avatar);
+    if (dc.img.getAttribute('src') !== dcAvatar) dc.img.src = dcAvatar;
+    if (cfg.discord.useAvatar && ok && UI.el.img) UI.el.img.src = dcAvatar.replace('size=128', 'size=256');
+    dc.user.textContent = (u && (u.global_name || u.username)) || cfg.discord.tag || cfg.username;
+    const custom = p.custom && (p.custom.text || p.custom.emoji) ? (p.custom.emoji ? p.custom.emoji + ' ' : '') + p.custom.text : '';
+    dc.sub.textContent = custom || STATUS_FR[p.status] || '';
 
-    if (Bio.cfg.discord.useAvatar && p.user && p.user.avatar && p.user.id && /^\d+$/.test(p.user.id) && /^[\w-]+$/.test(p.user.avatar)) {
-      UI.el.img.src = `https://cdn.discordapp.com/avatars/${p.user.id}/${p.user.avatar}.png?size=256`;
-    }
-
+    const act = dc.act;
+    act.textContent = '';
     const art = (src, fallbackIcon) => {
-      const box = h('div', { class: 'pr-art' }, Bio.icon(fallbackIcon, 22));
+      const box = h('div', { class: 'act-art' }, Bio.icon(fallbackIcon, 18));
       if (/^https:\/\//.test(src || '')) {
         const im = h('img', { src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
         im.addEventListener('error', () => im.remove());
@@ -183,26 +240,19 @@
       }
       return box;
     };
-
     if (p.spotify) {
-      const s = p.spotify;
-      const fill = h('i');
-      presence.dataset.kind = 'music';
-      presence.append(art(s.art, 'music'), h('div', { class: 'pr-body' },
-        h('div', { class: 'pr-kicker' }, h('span', { class: 'eq' }, h('i'), h('i'), h('i')), s.label),
-        h('div', { class: 'pr-title', text: s.song }),
-        h('div', { class: 'pr-sub', text: s.artist }),
-        h('div', { class: 'pr-bar' }, fill)));
+      const s = p.spotify, fill = h('i');
+      act.append(art(s.art, 'music'), h('div', { class: 'act-body' },
+        h('div', { class: 'act-kicker' }, h('span', { class: 'eq' }, h('i'), h('i'), h('i')), s.label),
+        h('div', { class: 'act-title', text: s.song }), h('div', { class: 'act-sub', text: s.artist }),
+        h('div', { class: 'act-bar' }, fill)));
       presenceTick = () => { fill.style.width = (clamp(s.progress(), 0, 1) * 100).toFixed(1) + '%'; };
-      presence.hidden = false;
+      act.hidden = false;
     } else if (p.activity) {
-      const a = p.activity;
-      const timer = h('span', { class: 'pr-time' });
-      presence.dataset.kind = 'game';
-      presence.append(art(a.image, 'gamepad'), h('div', { class: 'pr-body' },
-        h('div', { class: 'pr-kicker', text: a.label }),
-        h('div', { class: 'pr-title', text: a.name }),
-        (a.details || a.state) ? h('div', { class: 'pr-sub', text: [a.details, a.state].filter(Boolean).join(' · ') }) : null,
+      const a = p.activity, timer = h('span', { class: 'act-time' });
+      act.append(art(a.image, 'gamepad'), h('div', { class: 'act-body' },
+        h('div', { class: 'act-kicker', text: a.label }), h('div', { class: 'act-title', text: a.name }),
+        (a.details || a.state) ? h('div', { class: 'act-sub', text: [a.details, a.state].filter(Boolean).join(' · ') }) : null,
         a.start ? timer : null));
       let lastSec = -1;
       presenceTick = () => {
@@ -213,8 +263,8 @@
         const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60);
         timer.textContent = 'depuis ' + (hh ? hh + ' h ' : '') + mm + ' min';
       };
-      presence.hidden = false;
-    } else presence.hidden = true;
+      act.hidden = false;
+    } else act.hidden = true;
     if (presenceTick) presenceTick();
   };
 
@@ -224,37 +274,37 @@
     const cover = h('div', { class: 'p-cover' });
     const title = h('div', { class: 'p-title' });
     const artist = h('div', { class: 'p-artist' });
+    const tag = h('span', { class: 'p-tag', hidden: true });
     const playBtn = h('button', { class: 'p-btn p-play', type: 'button', 'aria-label': 'Lecture / pause', onclick: () => P.toggle() });
-    const prevBtn = h('button', { class: 'p-btn', type: 'button', 'aria-label': 'Piste précédente', onclick: () => P.prev() }, Bio.icon('prev', 18));
-    const nextBtn = h('button', { class: 'p-btn', type: 'button', 'aria-label': 'Piste suivante', onclick: () => P.next() }, Bio.icon('next', 18));
-    const viz = h('canvas', { class: 'p-viz', 'aria-hidden': 'true' });
+    const prevBtn = h('button', { class: 'p-btn', type: 'button', 'aria-label': 'Piste précédente', onclick: () => P.prev() }, Bio.icon('prev', 16));
+    const nextBtn = h('button', { class: 'p-btn', type: 'button', 'aria-label': 'Piste suivante', onclick: () => P.next() }, Bio.icon('next', 16));
     const fill = h('i', { class: 'p-fill' });
     const track = h('div', { class: 'p-track', role: 'slider', 'aria-label': 'Progression', tabindex: '0' }, fill);
-    const tcur = h('span', { class: 'p-time', text: '0:00' });
+    const tcur = h('span', { class: 'p-time', text: '00:00' });
     const tdur = h('span', { class: 'p-time', text: '∞' });
     const muteBtn = h('button', { class: 'p-btn p-mute', type: 'button', 'aria-label': 'Couper le son', onclick: () => P.toggleMute() });
     const vol = h('input', { class: 'p-vol', type: 'range', min: 0, max: 100, step: 1, 'aria-label': 'Volume', value: Math.round(P.volume * 100) });
     vol.addEventListener('input', () => P.setVolume(vol.value / 100));
-    track.addEventListener('pointerdown', (e) => {
-      const r = track.getBoundingClientRect();
-      P.seek((e.clientX - r.left) / r.width);
-    });
+    track.addEventListener('pointerdown', (e) => { const r = track.getBoundingClientRect(); P.seek((e.clientX - r.left) / r.width); });
 
-    const root = h('section', { class: 'player', 'aria-label': 'Lecteur de musique' },
-      h('div', { class: 'p-top' }, cover, h('div', { class: 'p-meta' }, title, artist), h('div', { class: 'p-ctrl' }, prevBtn, playBtn, nextBtn)),
-      viz,
-      h('div', { class: 'p-bar' }, tcur, track, tdur),
-      h('div', { class: 'p-volrow' }, muteBtn, vol));
+    const root = widget('music',
+      h('div', { class: 'p-top' }, cover, h('div', { class: 'p-meta' }, title, artist), tag, h('div', { class: 'p-ctrl' }, prevBtn, playBtn, nextBtn)),
+      track,
+      h('div', { class: 'p-times' }, tcur, h('span', { class: 'p-volrow' }, muteBtn, vol), tdur));
+    root.setAttribute('aria-label', 'Lecteur de musique');
 
+    const pad = (s) => (s === '∞' ? s : s.length < 5 ? '0' + s : s);
     const sync = () => {
       const t = P.track;
       if (!t) return;
       title.textContent = t.title;
       artist.textContent = t.artist;
+      tag.hidden = !t.tag;
+      tag.textContent = t.tag || '';
       playBtn.textContent = '';
-      playBtn.append(Bio.icon(P.playing ? 'pause' : 'play', 20));
+      playBtn.append(Bio.icon(P.playing ? 'pause' : 'play', 18));
       muteBtn.textContent = '';
-      muteBtn.append(Bio.icon(P.muted || P.volume === 0 ? 'mute' : 'volume', 18));
+      muteBtn.append(Bio.icon(P.muted || P.volume === 0 ? 'mute' : 'volume', 15));
       muteBtn.setAttribute('aria-label', P.muted ? 'Rétablir le son' : 'Couper le son');
       vol.value = P.muted ? 0 : Math.round(P.volume * 100);
       vol.style.setProperty('--val', vol.value + '%');
@@ -266,50 +316,10 @@
     };
     Bio.on('player', sync);
     sync();
-
-    // visualiseur + progression
-    const BARS = 44, arr = new Float32Array(BARS), smooth = new Float32Array(BARS);
-    let W = 0, H = 0, dpr = 1;
-    const ctx = viz.getContext('2d');
-    const size = () => {
-      const r = viz.getBoundingClientRect();
-      if (!r.width) return;
-      dpr = Math.min(devicePixelRatio || 1, 2);
-      W = r.width; H = r.height;
-      viz.width = Math.round(W * dpr);
-      viz.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    addEventListener('resize', size);
-    Bio.on('entered', size);
-    Bio.on('config', () => setTimeout(size, 50));
-    setTimeout(size, 50);
     let lastTime = '';
-    Bio.frame((dt, t) => {
-      if (!W) { size(); if (!W) return; }
-      P.bars(BARS, arr);
-      ctx.clearRect(0, 0, W, H);
-      const gap = 3, bw = (W - gap * (BARS - 1)) / BARS;
-      const grad = ctx.createLinearGradient(0, 0, W, 0);
-      grad.addColorStop(0, Bio.util.rgbToHex(...Bio.colors.a));
-      grad.addColorStop(1, Bio.util.rgbToHex(...Bio.colors.b));
-      ctx.fillStyle = grad;
-      for (let i = 0; i < BARS; i++) {
-        const idle = 0.06 + 0.03 * Math.sin(t * 1.6 + i * 0.5);
-        const target = P.playing ? Math.max(arr[i], 0.04) : idle;
-        smooth[i] += (target - smooth[i]) * (target > smooth[i] ? 0.5 : 0.12);
-        const bh = Math.max(2, smooth[i] * H);
-        ctx.globalAlpha = P.playing ? 0.95 : 0.35;
-        const x = i * (bw + gap), y = (H - bh) / 2;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, bw / 2); else ctx.rect(x, y, bw, bh);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      const pr = P.progress();
-      fill.style.width = (pr * 100).toFixed(2) + '%';
-      const dur = P.duration();
-      const txt = fmtTime(P.elapsed()) + '|' + fmtTime(dur);
+    Bio.frame(() => {
+      fill.style.width = (P.progress() * 100).toFixed(2) + '%';
+      const txt = pad(fmtTime(P.elapsed())) + '|' + pad(fmtTime(P.duration()));
       if (txt !== lastTime) { lastTime = txt; const [a, b] = txt.split('|'); tcur.textContent = a; tdur.textContent = b; }
       if (presenceTick) presenceTick();
     });
@@ -322,10 +332,9 @@
     s.textContent = '';
     if (!cfg.splash.enabled || Bio.preview) { s.hidden = true; return; }
     s.append(h('div', { class: 'splash-inner' },
-      h('div', { class: 'splash-orb' }),
       h('div', { class: 'splash-name', 'aria-hidden': 'true' }),
       h('div', { class: 'splash-cta' }, h('span', { text: cfg.splash.text })),
-      h('div', { class: 'splash-hint' }, Bio.icon('headphones', 14), h('span', { text: 'avec le son, c’est mieux' }))));
+      h('div', { class: 'splash-hint' }, Bio.icon('headphones', 13), h('span', { text: 'avec le son, c’est mieux' }))));
     const go = () => UI.enter(true);
     s.addEventListener('click', go);
     s.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
@@ -355,8 +364,6 @@
 
   /* ---------------------------------------------------------- compteur(s) */
   UI.initViews = async function () {
-    const el = $('#chip-views .chip-t');
-    if (!el) return;
     const cfg = Bio.cfg.views;
     let value = Number(cfg.base) || 0;
     if (cfg.endpoint && /^https?:\/\//.test(cfg.endpoint)) {
@@ -375,7 +382,9 @@
     const fmt = new Intl.NumberFormat('fr-FR');
     UI.viewsShown = true;
     UI.viewsText = fmt.format(value);
-    if (Bio.util.reduceMotion()) { el.textContent = fmt.format(value); return; }
+    const el = $('#chip-views');
+    if (!el) return;
+    if (Bio.util.reduceMotion()) { el.textContent = UI.viewsText; return; }
     const t0 = performance.now(), dur = 1400;
     const step = (now) => {
       const k = clamp((now - t0) / dur, 0, 1);
@@ -414,16 +423,20 @@
 
   /* --------------------------------------------------- tilt 3D + spotlight */
   UI.initTilt = function () {
-    const card = $('#card');
+    const col = $('#column');
     let tx = 0, ty = 0, cx = 0, cy = 0, hasPointer = false;
     addEventListener('pointermove', (e) => {
       if (e.pointerType !== 'mouse') return;
       hasPointer = true;
       tx = e.clientX / innerWidth - 0.5;
       ty = e.clientY / innerHeight - 0.5;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', e.clientX - r.left + 'px');
-      card.style.setProperty('--my', e.clientY - r.top + 'px');
+      if (document.documentElement.dataset.border === 'spotlight') {
+        $$('.widget', col).forEach((w) => {
+          const r = w.getBoundingClientRect();
+          w.style.setProperty('--mx', e.clientX - r.left + 'px');
+          w.style.setProperty('--my', e.clientY - r.top + 'px');
+        });
+      }
     }, { passive: true });
     document.addEventListener('mouseleave', () => { tx = ty = 0; });
     Bio.frame((dt) => {
@@ -431,9 +444,8 @@
       const k = 1 - Math.pow(0.0005, dt);
       cx += ((on ? tx : 0) - cx) * k;
       cy += ((on ? ty : 0) - cy) * k;
-      const bass = Bio.level.bass;
-      card.style.transform = on || Math.abs(cx) + Math.abs(cy) > 0.0005 ? `rotateX(${(-cy * 9).toFixed(3)}deg) rotateY(${(cx * 11).toFixed(3)}deg)` : '';
-      card.style.setProperty('--bass', bass.toFixed(3));
+      col.style.transform = on || Math.abs(cx) + Math.abs(cy) > 0.0005 ? `rotateX(${(-cy * 4).toFixed(3)}deg) rotateY(${(cx * 5).toFixed(3)}deg)` : '';
+      col.style.setProperty('--bass', Bio.level.bass.toFixed(3));
     });
   };
 
@@ -469,13 +481,13 @@
       mag = el;
       const r = el.getBoundingClientRect();
       const dx = (e.clientX - (r.left + r.width / 2)) / r.width, dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-      el.style.transform = `translate(${(dx * 9).toFixed(1)}px, ${(dy * 7).toFixed(1)}px)`;
+      el.style.transform = `translate(${(dx * 6).toFixed(1)}px, ${(dy * 5).toFixed(1)}px)`;
     }, { passive: true });
     document.addEventListener('mouseleave', release);
-    // explosion d'étincelles au clic sur un lien + onde (ripple)
+    // étincelles au clic sur un lien + onde (ripple)
     const ripples = $('#ripples');
     addEventListener('pointerdown', (e) => {
-      if (e.target.closest && e.target.closest('.link,.social,.p-btn,.tool')) Bio.fx.burst(e.clientX, e.clientY, 14, { speed: 150 });
+      if (Bio.cfg.effects.trail && e.target.closest && e.target.closest('.link,.social,.p-btn,.tool')) Bio.fx.burst(e.clientX, e.clientY, 14, { speed: 150 });
       if (Bio.cfg.effects.ripple && ripples && !Bio.util.reduceMotion() && !(e.target.closest && e.target.closest('.overlay'))) {
         const r = h('span', { class: 'ripple', style: { left: e.clientX + 'px', top: e.clientY + 'px' } });
         ripples.append(r);
@@ -489,6 +501,7 @@
     if (path === 'displayName') UI.setName(Bio.cfg.displayName);
     else if (path === 'bio') UI.startTypewriter();
     else if (/^(card\.|effects\.|font|nameStyle|linkStyle|avatarShape|avatarRing)/.test(path)) UI.applyCard();
+    else if (path === 'banner' || path === 'about') Bio.applyConfig(Bio.cfg);
   };
 
   UI.init = function () {

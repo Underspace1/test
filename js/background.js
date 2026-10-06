@@ -118,6 +118,7 @@ void main(){
       v.load();
     }
     this.image.style.backgroundImage = type === 'image' && c.src ? Bio.util.cssUrl(c.src) : '';
+    this.root.classList.toggle('mono', !!c.mono);
     // décorations
     const d = Bio.cfg.decor || {};
     const root = document.documentElement;
@@ -125,6 +126,7 @@ void main(){
     root.classList.toggle('decor-noise', !!d.noise);
     root.classList.toggle('decor-vignette', !!d.vignette);
     root.classList.toggle('decor-scanlines', !!d.scanlines);
+    root.classList.toggle('decor-dots', !!d.dots);
     root.classList.toggle('fx-spotlight', !!(Bio.cfg.effects && Bio.cfg.effects.spotlight) && Bio.util.finePointer());
   };
 

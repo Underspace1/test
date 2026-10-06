@@ -10,10 +10,10 @@
 
   /* Seuls ces réglages peuvent être modifiés depuis les réglages rapides / le terminal et mémorisés */
   const EDITABLE = [
-    'displayName', 'bio', 'banner', 'theme', 'accent', 'accent2', 'font', 'nameStyle', 'linkStyle', 'avatarShape', 'avatarRing',
-    'background.type', 'background.src', 'background.dim', 'background.blur',
+    'displayName', 'bio', 'about', 'banner', 'theme', 'accent', 'accent2', 'font', 'nameStyle', 'linkStyle', 'avatarShape', 'avatarRing',
+    'background.type', 'background.src', 'background.dim', 'background.blur', 'background.mono',
     'card.style', 'card.border', 'card.opacity', 'card.blur', 'card.radius',
-    'decor.orbs', 'decor.noise', 'decor.vignette', 'decor.scanlines',
+    'decor.orbs', 'decor.noise', 'decor.vignette', 'decor.scanlines', 'decor.dots',
     'effects.particles', 'effects.tilt', 'effects.cursor', 'effects.trail', 'effects.glitch', 'effects.spotlight', 'effects.ripple',
   ];
 
@@ -119,6 +119,8 @@
     toggleCfg('effects.glitch', 'Glitch du nom');
     toggleCfg('effects.spotlight', 'Halo du curseur');
     toggleCfg('decor.scanlines', 'Scanlines');
+    toggleCfg('decor.dots', 'Trame de points');
+    toggleCfg('background.mono', 'Fond noir & blanc');
 
     A({ group: 'Page', title: 'Copier le lien de la page', icon: 'share', keywords: 'partager url', run: async () => { const ok = await U.copy(location.href.split('#')[0].split('?')[0]); U.toast(ok ? 'Lien copié' : 'Copie impossible', ok ? 'check' : 'close'); } });
     if (!Bio.preview) A({ group: 'Page', title: 'Ouvrir le dashboard (éditeur complet)', icon: 'layers', keywords: 'config éditeur personnaliser', run: () => window.open('dashboard.html', '_blank', 'noopener') });
@@ -140,6 +142,7 @@
       else Bio.set(path, v, true);
     });
     flat(p.cfg);
+    Bio.applyConfig(Bio.cfg);
     U.toast('Modèle « ' + p.label + ' » appliqué', 'layers');
   };
 

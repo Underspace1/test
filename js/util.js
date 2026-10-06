@@ -193,6 +193,7 @@
 
   /* ---------- thèmes ---------- */
   Bio.themes = {
+    white: { label: 'Blanc', a: '#f4f4f5', b: '#a1a1aa' },
     violet: { label: 'Violet', a: '#a78bfa', b: '#ec4899' },
     ocean: { label: 'Océan', a: '#38bdf8', b: '#6366f1' },
     ember: { label: 'Braise', a: '#fb923c', b: '#f43f5e' },
@@ -202,7 +203,7 @@
     ice: { label: 'Glace', a: '#e0f2fe', b: '#7dd3fc' },
     mono: { label: 'Mono', a: '#d4d4d8', b: '#71717a' },
   };
-  Bio.colors = { a: [167, 139, 250], b: [236, 72, 153] };
+  Bio.colors = { a: [244, 244, 245], b: [161, 161, 170] };
   Bio.applyColors = (a, b) => {
     const root = document.documentElement.style;
     const ra = U.hexToRgb(a), rb = U.hexToRgb(b);
@@ -216,7 +217,7 @@
     Bio.emit('theme');
   };
   Bio.themeColors = (cfg) => {
-    const t = Bio.themes[cfg.theme] || Bio.themes.violet;
+    const t = Bio.themes[cfg.theme] || Bio.themes.white;
     return { a: U.isHex(cfg.accent) ? cfg.accent : t.a, b: U.isHex(cfg.accent2) ? cfg.accent2 : t.b };
   };
   Bio.applyTheme = (cfg) => {
@@ -226,8 +227,8 @@
 
   /* ---------- polices (Google Fonts, chargées à la demande) ---------- */
   Bio.fonts = {
-    space: { label: 'Space Grotesk', display: '"Space Grotesk"', body: '"Inter"', gf: 'Space+Grotesk:wght@500;600;700' },
     inter: { label: 'Inter', display: '"Inter"', body: '"Inter"', gf: '' },
+    space: { label: 'Space Grotesk', display: '"Space Grotesk"', body: '"Inter"', gf: 'Space+Grotesk:wght@500;600;700' },
     sora: { label: 'Sora', display: '"Sora"', body: '"Sora"', gf: 'Sora:wght@400;500;600;700' },
     outfit: { label: 'Outfit', display: '"Outfit"', body: '"Outfit"', gf: 'Outfit:wght@400;500;600;700' },
     poppins: { label: 'Poppins', display: '"Poppins"', body: '"Poppins"', gf: 'Poppins:wght@400;500;600;700' },
@@ -237,7 +238,7 @@
   };
   const loadedFonts = new Set(['space', 'inter', 'mono']);
   Bio.applyFont = (key) => {
-    const f = Bio.fonts[key] || Bio.fonts.space;
+    const f = Bio.fonts[key] || Bio.fonts.inter;
     if (f.gf && !loadedFonts.has(key)) {
       loadedFonts.add(key);
       document.head.append(U.h('link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap' }));
@@ -249,30 +250,34 @@
 
   /* ---------- modèles prêts à l'emploi ---------- */
   Bio.presets = [
+    { id: 'drift', label: 'Minimal', desc: 'Noir & blanc, verre sombre, halo', colors: ['#f4f4f5', '#52525b'],
+      cfg: { theme: 'white', accent: '', accent2: '', font: 'inter', nameStyle: 'neon', linkStyle: 'glass', avatarRing: 'none', avatarShape: 'circle', banner: 'gradient',
+        background: { type: 'shader', dim: 0.35, blur: 0, mono: true }, card: { style: 'glass', border: 'none', opacity: 0.5, blur: 16, radius: 26 },
+        decor: { orbs: false, noise: false, vignette: true, scanlines: false, dots: true }, effects: { particles: 'none', spotlight: true, tilt: true, trail: false, glitch: false, cursor: false } } },
     { id: 'nebula', label: 'Nébuleuse', desc: 'Fluide WebGL, verre, lucioles', colors: ['#a78bfa', '#ec4899'],
       cfg: { theme: 'violet', accent: '', accent2: '', font: 'space', nameStyle: 'shimmer', linkStyle: 'glass', avatarRing: 'gradient', avatarShape: 'circle', banner: '',
-        background: { type: 'shader', dim: 0.25, blur: 0 }, card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
-        decor: { orbs: true, noise: true, vignette: true, scanlines: false }, effects: { particles: 'fireflies', spotlight: true } } },
+        background: { type: 'shader', dim: 0.25, blur: 0, mono: false }, card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
+        decor: { orbs: true, noise: true, vignette: true, scanlines: false, dots: false }, effects: { particles: 'fireflies', spotlight: true } } },
     { id: 'aurora', label: 'Aurore', desc: 'Voiles boréals, menthe & cyan', colors: ['#34d399', '#22d3ee'],
       cfg: { theme: 'mint', accent: '', accent2: '', font: 'sora', nameStyle: 'neon', linkStyle: 'outline', avatarRing: 'pulse', avatarShape: 'circle', banner: '',
-        background: { type: 'aurora', dim: 0.2, blur: 0 }, card: { style: 'glass', border: 'gradient', opacity: 0.4, blur: 26, radius: 24 },
-        decor: { orbs: false, noise: true, vignette: true, scanlines: false }, effects: { particles: 'snow', spotlight: true } } },
+        background: { type: 'aurora', dim: 0.2, blur: 0, mono: false }, card: { style: 'glass', border: 'gradient', opacity: 0.4, blur: 26, radius: 24 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: false, dots: false }, effects: { particles: 'snow', spotlight: true } } },
     { id: 'synthwave', label: 'Synthwave', desc: 'Grille rétro, néons, scanlines', colors: ['#f472b6', '#22d3ee'],
       cfg: { theme: 'violet', accent: '#f472b6', accent2: '#22d3ee', font: 'syne', nameStyle: 'neon', linkStyle: 'neon', avatarRing: 'gradient', avatarShape: 'hexagon', banner: 'gradient',
-        background: { type: 'grid', dim: 0.1, blur: 0 }, card: { style: 'neon', border: 'none', opacity: 0.7, blur: 16, radius: 18 },
-        decor: { orbs: false, noise: true, vignette: true, scanlines: true }, effects: { particles: 'shooting', spotlight: false } } },
-    { id: 'minimal', label: 'Minimal', desc: 'Sobre, net, sans distraction', colors: ['#e4e4e7', '#71717a'],
+        background: { type: 'grid', dim: 0.1, blur: 0, mono: false }, card: { style: 'neon', border: 'none', opacity: 0.7, blur: 16, radius: 18 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: true, dots: false }, effects: { particles: 'shooting', spotlight: false } } },
+    { id: 'paper', label: 'Sobre', desc: 'Plein, net, sans distraction', colors: ['#e4e4e7', '#71717a'],
       cfg: { theme: 'mono', accent: '', accent2: '', font: 'inter', nameStyle: 'plain', linkStyle: 'solid', avatarRing: 'none', avatarShape: 'rounded', banner: '',
-        background: { type: 'none', dim: 0, blur: 0 }, card: { style: 'solid', border: 'none', opacity: 1, blur: 0, radius: 20 },
-        decor: { orbs: false, noise: false, vignette: false, scanlines: false }, effects: { particles: 'none', spotlight: false, tilt: false, trail: false, glitch: false } } },
+        background: { type: 'none', dim: 0, blur: 0, mono: false }, card: { style: 'solid', border: 'none', opacity: 1, blur: 0, radius: 20 },
+        decor: { orbs: false, noise: false, vignette: false, scanlines: false, dots: false }, effects: { particles: 'none', spotlight: false, tilt: false, trail: false, glitch: false } } },
     { id: 'sakura', label: 'Sakura', desc: 'Pastel, bokeh, douceur', colors: ['#f9a8d4', '#c084fc'],
       cfg: { theme: 'sakura', accent: '', accent2: '', font: 'playfair', nameStyle: 'rainbow', linkStyle: 'glass', avatarRing: 'gradient', avatarShape: 'circle', banner: 'gradient',
-        background: { type: 'aurora', dim: 0.3, blur: 0 }, card: { style: 'glass', border: 'gradient', opacity: 0.5, blur: 30, radius: 32 },
-        decor: { orbs: true, noise: false, vignette: true, scanlines: false }, effects: { particles: 'bokeh', spotlight: true } } },
+        background: { type: 'aurora', dim: 0.3, blur: 0, mono: false }, card: { style: 'glass', border: 'gradient', opacity: 0.5, blur: 30, radius: 32 },
+        decor: { orbs: true, noise: false, vignette: true, scanlines: false, dots: false }, effects: { particles: 'bokeh', spotlight: true } } },
     { id: 'gold', label: 'Luxe', desc: 'Or & noir, étoiles filantes', colors: ['#fcd34d', '#f97316'],
       cfg: { theme: 'gold', accent: '', accent2: '', font: 'playfair', nameStyle: 'shimmer', linkStyle: 'outline', avatarRing: 'gradient', avatarShape: 'circle', banner: '',
-        background: { type: 'shader', dim: 0.45, blur: 0 }, card: { style: 'outline', border: 'gradient', opacity: 0.3, blur: 18, radius: 22 },
-        decor: { orbs: false, noise: true, vignette: true, scanlines: false }, effects: { particles: 'shooting', spotlight: true } } },
+        background: { type: 'shader', dim: 0.45, blur: 0, mono: false }, card: { style: 'outline', border: 'gradient', opacity: 0.3, blur: 18, radius: 22 },
+        decor: { orbs: false, noise: true, vignette: true, scanlines: false, dots: false }, effects: { particles: 'shooting', spotlight: true } } },
   ];
 
   /* ---------- icônes ---------- */
@@ -384,6 +389,16 @@
   };
   Bio.hasIcon = (name) => !!(UI[name] || (window.BioIcons && window.BioIcons[name]));
 
+  /* ---------- widgets (blocs empilés de la page) ---------- */
+  Bio.widgets = {
+    profile: { label: 'Profil', desc: 'bannière, avatar, nom, bio, réseaux', icon: 'user' },
+    about: { label: 'À propos', desc: 'un court texte libre', icon: 'pen' },
+    views: { label: 'Vues', desc: 'compteur de visites', icon: 'eye' },
+    discord: { label: 'Discord', desc: 'présence en direct', icon: 'discord' },
+    music: { label: 'Musique', desc: 'lecteur', icon: 'music' },
+    links: { label: 'Liens', desc: 'les gros boutons', icon: 'link' },
+  };
+
   /* ---------- valeurs par défaut de la configuration ---------- */
   Bio.defaults = {
     username: 'username',
@@ -392,24 +407,27 @@
     banner: '',
     verified: true,
     bio: ['Hello world.'],
+    about: '',
     location: '',
     timezone: '',
     uid: 1,
     joined: '',
     pageTitle: '',
-    font: 'space',
-    nameStyle: 'shimmer',
+    layout: ['profile', 'about', 'views', 'discord', 'music', 'links'],
+    socialsLimit: 5,
+    font: 'inter',
+    nameStyle: 'neon',
     linkStyle: 'glass',
     avatarShape: 'circle',
-    avatarRing: 'gradient',
+    avatarRing: 'none',
     splash: { enabled: true, text: 'cliquer pour entrer' },
-    background: { type: 'shader', src: '', dim: 0.25, blur: 0 },
-    theme: 'violet',
+    background: { type: 'shader', src: '', dim: 0.35, blur: 0, mono: true },
+    theme: 'white',
     accent: '',
     accent2: '',
-    card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
-    decor: { orbs: true, noise: true, vignette: true, scanlines: false },
-    effects: { particles: 'fireflies', tilt: true, cursor: true, trail: true, glitch: true, spotlight: true, ripple: true },
+    card: { style: 'glass', border: 'none', opacity: 0.5, blur: 16, radius: 26 },
+    decor: { orbs: false, noise: false, vignette: true, scanlines: false, dots: true },
+    effects: { particles: 'none', tilt: true, cursor: false, trail: false, glitch: false, spotlight: true, ripple: true },
     discord: { id: '', demo: true, useAvatar: false, tag: '' },
     views: { base: 0, endpoint: '' },
     music: { autoplay: true, volume: 0.55, tracks: [] },
@@ -440,6 +458,10 @@
       if (!Bio.enums[path].includes(v)) U.setPath(out, path, U.getPath(Bio.defaults, path));
     }
     if (!Array.isArray(out.bio)) out.bio = [String(out.bio || '')];
+    const ids = Object.keys(Bio.widgets);
+    out.layout = Array.isArray(out.layout) ? out.layout.filter((w, i, a) => ids.includes(w) && a.indexOf(w) === i) : Bio.defaults.layout.slice();
+    out.about = String(out.about || '');
+    out.socialsLimit = Math.max(0, parseInt(out.socialsLimit, 10) || 0);
     ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     if (!Array.isArray(out.music.tracks)) out.music.tracks = [];
     return out;

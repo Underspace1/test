@@ -34,6 +34,7 @@
     saveDraft();
     pushPreview();
     if (opts.sync) syncAll();
+    else if (D.heroSync) D.heroSync();
   }
   function replaceConfig(next) {
     D.cfg = Bio.normalize(next);
@@ -98,9 +99,9 @@
   F.number = (f) => F.text(Object.assign({ inputType: 'number', number: true }, f));
   F.lines = (f) => {
     const a = h('textarea', { class: 'in', rows: 4, spellcheck: 'false', placeholder: f.placeholder || '', 'data-path': f.path });
-    const toStr = () => [].concat(get(f.path) || []).join('\n');
+    const toStr = () => (f.asText ? String(get(f.path) || '') : [].concat(get(f.path) || []).join('\n'));
     a.value = toStr();
-    a.addEventListener('input', () => set(f.path, a.value.split('\n').map((s) => s.trim()).filter(Boolean)));
+    a.addEventListener('input', () => set(f.path, f.asText ? a.value : a.value.split('\n').map((s) => s.trim()).filter(Boolean)));
     D.syncs.push(() => { if (document.activeElement !== a) a.value = toStr(); });
     return field(f.label, a, Object.assign({ stack: true }, f));
   };
@@ -228,6 +229,36 @@
     return field(f.label, h('div', { class: 'img-field' }, prev, h('div', { class: 'img-ctl' }, path, row)), Object.assign({ stack: true }, f));
   };
   F.note = (f) => h('div', { class: 'note' }, Bio.icon('info', 16), h('div', {}, f.content()));
+
+  // disposition : widgets actifs (dans l'ordre) puis inactifs ; monter / descendre / activer
+  F.layout = (f) => {
+    const list = h('div', { class: 'layout-list' });
+    const ids = Object.keys(Bio.widgets);
+    const render = () => {
+      list.textContent = '';
+      const on = get('layout');
+      const all = on.concat(ids.filter((id) => !on.includes(id)));
+      all.forEach((id) => {
+        const w = Bio.widgets[id];
+        const active = on.includes(id);
+        const idx = on.indexOf(id);
+        const sw = h('button', { type: 'button', class: 'sw', role: 'switch', 'aria-checked': active ? 'true' : 'false', 'aria-label': 'Afficher ' + w.label });
+        sw.addEventListener('click', () => { set('layout', active ? on.filter((x) => x !== id) : on.concat(id)); render(); });
+        const mk = (icon, label, fn, disabled) => h('button', { type: 'button', title: label, 'aria-label': label, disabled, onclick: fn }, Bio.icon(icon, 15));
+        const row = h('div', { class: 'layout-item' + (active ? '' : ' off') },
+          h('span', { class: 'ibtn' }, Bio.icon(w.icon, 17)),
+          h('span', { class: 'title' }, w.label, h('small', { text: w.desc })),
+          h('span', { class: 'acts' },
+            mk('up', 'Monter', () => { const a = on.slice(); a.splice(idx - 1, 0, a.splice(idx, 1)[0]); set('layout', a); render(); }, !active || idx === 0),
+            mk('down', 'Descendre', () => { const a = on.slice(); a.splice(idx + 1, 0, a.splice(idx, 1)[0]); set('layout', a); render(); }, !active || idx === on.length - 1)),
+          sw);
+        list.append(row);
+      });
+    };
+    D.syncs.push(render);
+    render();
+    return field(f.label, list, Object.assign({ stack: true }, f));
+  };
 
   /* redimensionne une image importée (les GIF/SVG sont gardés tels quels pour préserver l'animation) */
   function imageToDataUrl(fl, max, quality) {
@@ -371,7 +402,8 @@
         { type: 'text', path: 'displayName', label: 'Nom affiché' },
         { type: 'text', path: 'username', label: 'Nom d’utilisateur', prefix: '@' },
         { type: 'toggle', path: 'verified', label: 'Badge vérifié', hint: 'Étincelle à côté du nom' },
-        { type: 'lines', path: 'bio', label: 'Bio', hint: 'Une phrase par ligne : elles s’écrivent et s’effacent en boucle.' },
+        { type: 'lines', path: 'bio', label: 'Accroche', hint: 'Une phrase par ligne, sous le nom : elles s’écrivent et s’effacent en boucle.' },
+        { type: 'lines', path: 'about', label: 'À propos', hint: 'Texte libre du widget « À propos » (vide = widget masqué).', asText: true },
         { type: 'text', path: 'location', label: 'Localisation', placeholder: 'Paris, France' },
         { type: 'text', path: 'timezone', label: 'Fuseau horaire', placeholder: 'Europe/Paris', hint: 'Affiche ton heure locale en direct (laisse vide pour masquer)', mono: true },
         { type: 'number', path: 'uid', label: 'UID', hint: 'Ton numéro de membre' },
@@ -381,6 +413,12 @@
       { title: 'Écran d’entrée', fields: [
         { type: 'toggle', path: 'splash.enabled', label: 'Activer', hint: 'Le clic permet aussi de lancer la musique automatiquement' },
         { type: 'text', path: 'splash.text', label: 'Texte' },
+      ] },
+    ] },
+    { id: 'disposition', icon: 'layers', title: 'Disposition', desc: 'Les widgets de ta page et leur ordre', groups: [
+      { fields: [
+        { type: 'layout', path: 'layout', label: 'Widgets', hint: 'Active, désactive et ordonne les blocs. Le widget « À propos » n’apparaît que s’il a un texte ; « Discord » seulement avec une présence (ou la démo).' },
+        { type: 'range', path: 'socialsLimit', label: 'Réseaux visibles', min: 0, max: 12, step: 1, format: (v) => (v === 0 ? 'tous' : v), hint: 'Au-delà, un bouton « + » déplie les autres' },
       ] },
     ] },
     { id: 'apparence', icon: 'palette', title: 'Apparence', desc: 'Modèles, couleurs, police, styles', groups: [
@@ -393,7 +431,7 @@
       { title: 'Typographie', fields: [
         { type: 'choice', path: 'font', label: 'Police', options: Object.entries(Bio.fonts).map(([k, f]) => ({ value: k, label: f.label, preview: fontPrev(k) })) },
         { type: 'choice', path: 'nameStyle', label: 'Style du nom', options: [
-          { value: 'shimmer', label: 'Dégradé animé', icon: 'sparkles' }, { value: 'neon', label: 'Néon', icon: 'zap' }, { value: 'rainbow', label: 'Arc-en-ciel', icon: 'palette' }, { value: 'plain', label: 'Simple', icon: 'type' }] },
+          { value: 'neon', label: 'Halo', icon: 'zap' }, { value: 'shimmer', label: 'Dégradé animé', icon: 'sparkles' }, { value: 'rainbow', label: 'Arc-en-ciel', icon: 'palette' }, { value: 'plain', label: 'Simple', icon: 'type' }] },
       ] },
       { title: 'Avatar', fields: [
         { type: 'seg', path: 'avatarShape', label: 'Forme', options: [['circle', 'Rond'], ['rounded', 'Arrondi'], ['hexagon', 'Hexagone']] },
@@ -402,7 +440,7 @@
       { title: 'Carte', fields: [
         { type: 'choice', path: 'card.style', label: 'Style de carte', options: [
           { value: 'glass', label: 'Verre dépoli', desc: 'glassmorphism' }, { value: 'solid', label: 'Pleine', desc: 'opaque, sobre' }, { value: 'outline', label: 'Contour', desc: 'léger, aéré' }, { value: 'neon', label: 'Néon', desc: 'halo lumineux' }] },
-        { type: 'seg', path: 'card.border', label: 'Bordure', options: [['spotlight', 'Projecteur'], ['gradient', 'Anneau animé'], ['none', 'Aucune']] },
+        { type: 'seg', path: 'card.border', label: 'Bordure', options: [['none', 'Aucune'], ['spotlight', 'Projecteur'], ['gradient', 'Anneau animé']] },
         { type: 'range', path: 'card.opacity', label: 'Opacité', min: 0.05, max: 1, step: 0.01, format: (v) => Math.round(v * 100), unit: '%' },
         { type: 'range', path: 'card.blur', label: 'Flou du verre', min: 0, max: 50, step: 1, unit: 'px' },
         { type: 'range', path: 'card.radius', label: 'Arrondi', min: 0, max: 48, step: 1, unit: 'px' },
@@ -417,16 +455,18 @@
           { value: 'grid', label: 'Grille rétro', desc: 'synthwave', icon: 'layers' }, { value: 'video', label: 'Vidéo', desc: 'fichier mp4/webm', icon: 'video' },
           { value: 'image', label: 'Image', desc: 'jpg, png, gif', icon: 'image' }, { value: 'none', label: 'Sobre', desc: 'dégradé simple', icon: 'moon' }] },
         { type: 'image', path: 'background.src', label: 'Fichier du fond', hint: 'Pour « Vidéo », mets le chemin (ex. assets/fond.mp4). Pour « Image », importe ou indique un chemin.', wide: true, max: 1920, placeholder: 'assets/fond.mp4 · assets/fond.jpg · https://…' },
+        { type: 'toggle', path: 'background.mono', label: 'Noir & blanc', hint: 'Passe le fond en niveaux de gris' },
         { type: 'range', path: 'background.dim', label: 'Assombrir', min: 0, max: 0.9, step: 0.01, format: (v) => Math.round(v * 100), unit: '%' },
         { type: 'range', path: 'background.blur', label: 'Flou', min: 0, max: 24, step: 1, unit: 'px' },
       ] },
       { title: 'Particules', fields: [
         { type: 'choice', path: 'effects.particles', label: 'Particules', options: [
-          { value: 'fireflies', label: 'Lucioles', icon: 'sparkles' }, { value: 'snow', label: 'Neige', icon: 'moon' }, { value: 'stars', label: 'Étoiles', icon: 'star' },
-          { value: 'shooting', label: 'Étoiles filantes', icon: 'zap' }, { value: 'bokeh', label: 'Bokeh', icon: 'camera' }, { value: 'rain', label: 'Pluie', icon: 'leaf' }, { value: 'none', label: 'Aucune', icon: 'close' }] },
+          { value: 'none', label: 'Aucune', icon: 'close' }, { value: 'snow', label: 'Neige', icon: 'moon' }, { value: 'fireflies', label: 'Lucioles', icon: 'sparkles' }, { value: 'stars', label: 'Étoiles', icon: 'star' },
+          { value: 'shooting', label: 'Étoiles filantes', icon: 'zap' }, { value: 'bokeh', label: 'Bokeh', icon: 'camera' }, { value: 'rain', label: 'Pluie', icon: 'leaf' }] },
       ] },
       { title: 'Décorations', fields: [
-        { type: 'toggle', path: 'decor.orbs', label: 'Orbes flottantes', hint: 'Halos colorés derrière la carte' },
+        { type: 'toggle', path: 'decor.dots', label: 'Trame de points', hint: 'Motif halftone sur le fond' },
+        { type: 'toggle', path: 'decor.orbs', label: 'Orbes flottantes', hint: 'Halos colorés derrière les widgets' },
         { type: 'toggle', path: 'decor.noise', label: 'Grain', hint: 'Texture fine façon film / verre givré' },
         { type: 'toggle', path: 'decor.vignette', label: 'Vignette', hint: 'Assombrit les bords de l’écran' },
         { type: 'toggle', path: 'decor.scanlines', label: 'Scanlines', hint: 'Lignes de balayage rétro' },
@@ -462,7 +502,7 @@
         { type: 'range', path: 'music.volume', label: 'Volume par défaut', min: 0, max: 1, step: 0.01, format: (v) => Math.round(v * 100), unit: '%' },
         { type: 'list', path: 'music.tracks', label: 'Pistes', iconKind: 'ui', addLabel: 'Ajouter une piste', empty: 'Aucune piste : les ambiances générées sont utilisées.',
           title: (t) => t.title, subtitle: (t) => t.artist, make: () => ({ icon: 'music', title: 'Nouvelle piste', artist: '', src: 'assets/son.mp3', cover: '' }),
-          fields: [{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'src', label: 'Fichier audio (assets/son.mp3 ou URL)', full: true, mono: true }, { key: 'cover', label: 'Pochette (optionnel)', mono: true }, { type: 'toggle', key: 'cors', label: 'CORS', hint: 'fichier hébergé ailleurs, serveur avec Access-Control-Allow-Origin' }] },
+          fields: [{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'src', label: 'Fichier audio (assets/son.mp3 ou URL)', full: true, mono: true }, { key: 'cover', label: 'Pochette (optionnel)', mono: true }, { key: 'tag', label: 'Étiquette (ex. Explicit)' }, { type: 'toggle', key: 'cors', label: 'CORS', hint: 'fichier hébergé ailleurs, serveur avec Access-Control-Allow-Origin' }] },
       ] },
     ] },
     { id: 'discord', icon: 'discord', title: 'Discord', desc: 'Présence en direct (statut, jeu, Spotify)', groups: [{ fields: [
@@ -470,7 +510,7 @@
       { type: 'text', path: 'discord.id', label: 'ID utilisateur Discord', placeholder: '123456789012345678', mono: true },
       { type: 'toggle', path: 'discord.demo', label: 'Mode démo', hint: 'Affiche une fausse activité tant qu’aucun ID n’est renseigné' },
       { type: 'toggle', path: 'discord.useAvatar', label: 'Utiliser l’avatar Discord', hint: 'Remplace ton avatar par celui de Discord' },
-      { type: 'text', path: 'discord.tag', label: 'Pseudo à copier', hint: 'Copié quand on clique sur l’icône Discord des réseaux' },
+      { type: 'text', path: 'discord.tag', label: 'Pseudo Discord', hint: 'Affiché dans le widget (sans Lanyard) et copié au clic sur l’icône Discord' },
     ] }] },
     { id: 'avance', icon: 'cpu', title: 'Avancé', desc: 'Compteur, extras', groups: [
       { title: 'Compteur de vues', fields: [
@@ -486,6 +526,24 @@
 
   /* ---------------------------------------------------------------- rendu */
   const main = $('#d-main'), nav = $('#d-nav');
+  const hero = (() => {
+    const name = h('b'), stats = h('div', { class: 'hero-stats' });
+    const el = h('section', { class: 'hero' },
+      h('div', { class: 'hero-top' }, h('div', {}, h('p', { class: 'hero-k', text: 'Vue d’ensemble' }), h('h1', {}, 'Bonjour, ', name, ' !'), h('p', { class: 'hero-sub', text: 'Tout ce que tu changes ici s’affiche en direct dans l’aperçu. Pense à télécharger config.js quand tu as fini.' })),
+        h('a', { class: 'btn pill', href: 'index.html', target: '_blank', rel: 'noopener' }, Bio.icon('external', 14), 'Voir ma page')),
+      stats);
+    const tile = (icon, label, val) => h('div', { class: 'tile' }, h('span', { class: 'tile-k' }, Bio.icon(icon, 13), label), h('b', { text: val }));
+    D.heroSync = () => {
+      const c = D.cfg;
+      name.textContent = c.displayName || c.username;
+      stats.textContent = '';
+      stats.append(tile('link', 'URL', '/' + c.username), tile('eye', 'Vues', new Intl.NumberFormat('fr-FR').format(c.views.base || 0)), tile('layers', 'Widgets', c.layout.length + ' / ' + Object.keys(Bio.widgets).length),
+        tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile('palette', 'Thème', (Bio.themes[c.theme] || {}).label || c.theme));
+    };
+    D.syncs.push(D.heroSync);
+    return el;
+  })();
+  main.append(hero);
   SECTIONS.forEach((s) => {
     const body = h('div', { class: 'p-body' }, s.groups.map((g) => h('div', { class: 'p-group' }, g.title ? h('h3', { text: g.title }) : null, g.fields.map((f) => F[f.type](f)))));
     main.append(h('section', { class: 'd-panel', id: 's-' + s.id },
@@ -554,6 +612,7 @@
 
   /* ------------------------------------------------------------------ go */
   setStatus();
+  syncAll();
   fitPreview();
   if (draft) U.toast('Brouillon restauré', 'info');
 })();

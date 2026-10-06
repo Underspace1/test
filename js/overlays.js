@@ -366,14 +366,14 @@
       section('Modèles', presetGrid),
       section('Identité', row('Nom', text('displayName')), row('Bio', area('bio'))),
       section('Couleurs', themeChips, row('Accent', color('accent')), row('Accent 2', color('accent2')), hueBtn),
-      section('Style', seg('nameStyle', [['shimmer', 'Dégradé'], ['neon', 'Néon'], ['rainbow', 'Arc-en-ciel'], ['plain', 'Simple']]),
+      section('Style', seg('nameStyle', [['neon', 'Halo'], ['shimmer', 'Dégradé'], ['rainbow', 'Arc-en-ciel'], ['plain', 'Simple']]),
         seg('linkStyle', [['glass', 'Verre'], ['solid', 'Plein'], ['outline', 'Contour'], ['neon', 'Néon']])),
       section('Fond', seg('background.type', [['shader', 'Fluide'], ['aurora', 'Aurore'], ['grid', 'Grille'], ['none', 'Aucun']]),
         row('Assombrir', range('background.dim', 0, 0.9, 0.01)), row('Flou', range('background.blur', 0, 24, 1, 'px'))),
       section('Particules', seg('effects.particles', [['fireflies', 'Lucioles'], ['snow', 'Neige'], ['shooting', 'Filantes'], ['bokeh', 'Bokeh'], ['none', 'Aucune']])),
       section('Carte', seg('card.style', [['glass', 'Verre'], ['solid', 'Plein'], ['outline', 'Contour'], ['neon', 'Néon']]),
         row('Opacité', range('card.opacity', 0.05, 1, 0.01)), row('Flou verre', range('card.blur', 0, 50, 1, 'px')), row('Arrondi', range('card.radius', 0, 48, 1, 'px'))),
-      section('Décor & effets', row('Grain', toggle('decor.noise')), row('Vignette', toggle('decor.vignette')), row('Scanlines', toggle('decor.scanlines')), row('Orbes', toggle('decor.orbs')),
+      section('Décor & effets', row('Fond noir & blanc', toggle('background.mono')), row('Trame de points', toggle('decor.dots')), row('Grain', toggle('decor.noise')), row('Vignette', toggle('decor.vignette')), row('Scanlines', toggle('decor.scanlines')), row('Orbes', toggle('decor.orbs')),
         row('Inclinaison 3D', toggle('effects.tilt')), row('Halo du curseur', toggle('effects.spotlight')), row('Traînée', toggle('effects.trail')), row('Glitch du nom', toggle('effects.glitch'))),
       Bio.preview ? null : h('a', { class: 'st-btn st-dash', href: 'dashboard.html', target: '_blank', rel: 'noopener' }, Bio.icon('layers', 15), 'Ouvrir l’éditeur complet', Bio.icon('external', 13)));
 

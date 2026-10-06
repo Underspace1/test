@@ -13,28 +13,31 @@ window.BIO_CONFIG = {
   banner: 'gradient',               // '' (aucune), 'gradient', ou une image : 'assets/banner.jpg'
   verified: true,                   // petite étincelle à côté du nom
   // Phrases qui s'écrivent / s'effacent en boucle sous le nom
-  bio: [
-    'designer · dev · insomniaque',
-    'je construis des trucs bizarres et beaux',
-    'café, synthés & nuits blanches',
-  ],
+  bio: ['click & sleep', 'designer · dev · insomniaque'],
+  about: 'Je construis des trucs bizarres et beaux, souvent la nuit. Café, synthés, pixels.',
   location: 'Paris, France',
   timezone: 'Europe/Paris',         // affiche ton heure locale en direct (optionnel)
   uid: 1,                           // ton numéro de membre
   joined: '2026-01-01',             // optionnel
   pageTitle: '@nova',               // le titre de l'onglet s'écrit lettre par lettre
 
+  /* ---------- disposition ----------
+     L'ordre des widgets sur la page. Retire-en un pour le masquer.
+     Disponibles : 'profile' 'about' 'views' 'discord' 'music' 'links'       */
+  layout: ['profile', 'about', 'views', 'discord', 'music', 'links'],
+  socialsLimit: 5,                  // icônes de réseaux visibles avant le bouton « + » (0 = toutes)
+
   /* ---------- style ----------
-     font        : 'space' | 'inter' | 'sora' | 'outfit' | 'poppins' | 'syne' | 'playfair' | 'mono'
-     nameStyle   : 'shimmer' (dégradé animé) | 'neon' | 'rainbow' | 'plain'
+     font        : 'inter' | 'space' | 'sora' | 'outfit' | 'poppins' | 'syne' | 'playfair' | 'mono'
+     nameStyle   : 'neon' (halo) | 'shimmer' (dégradé animé) | 'rainbow' | 'plain'
      linkStyle   : 'glass' | 'solid' | 'outline' | 'neon'
      avatarShape : 'circle' | 'rounded' | 'hexagon'
-     avatarRing  : 'gradient' (anneau tournant) | 'pulse' | 'none'                */
-  font: 'space',
-  nameStyle: 'shimmer',
+     avatarRing  : 'none' | 'gradient' (anneau tournant) | 'pulse'                */
+  font: 'inter',
+  nameStyle: 'neon',
   linkStyle: 'glass',
   avatarShape: 'circle',
-  avatarRing: 'gradient',
+  avatarRing: 'none',
 
   /* ---------- écran d'entrée ("click to enter") ---------- */
   splash: {
@@ -43,44 +46,46 @@ window.BIO_CONFIG = {
   },
 
   /* ---------- fond ----------
-     type : 'shader'  → fluide WebGL généré en direct, réagit à la musique (défaut)
+     type : 'shader'  → fluide généré en direct, réagit à la musique (défaut)
             'aurora'  → voiles d'aurore boréale animés (CSS pur, très léger)
             'grid'    → grille rétro façon synthwave
             'video'   → une vidéo en boucle (mets son chemin dans src, ex. 'assets/fond.mp4')
             'image'   → une image / un gif (src)
-            'none'    → dégradé simple                                          */
-  background: { type: 'shader', src: '', dim: 0.25, blur: 0 },
+            'none'    → dégradé simple
+     mono : true → fond en noir et blanc                                        */
+  background: { type: 'shader', src: '', dim: 0.35, blur: 0, mono: true },
 
   /* ---------- couleurs ----------
-     theme : 'violet' | 'ocean' | 'ember' | 'mint' | 'sakura' | 'gold' | 'ice' | 'mono'
+     theme : 'white' | 'violet' | 'ocean' | 'ember' | 'mint' | 'sakura' | 'gold' | 'ice' | 'mono'
      accent / accent2 : surcharge perso en hexadécimal (ex. '#ff5d8f'), optionnel  */
-  theme: 'violet',
+  theme: 'white',
   accent: '',
   accent2: '',
 
-  /* ---------- carte ----------
-     style  : 'glass' (verre dépoli) | 'solid' | 'outline' | 'neon'
-     border : 'spotlight' (suit la souris) | 'gradient' (anneau animé) | 'none'   */
-  card: { style: 'glass', border: 'spotlight', opacity: 0.55, blur: 22, radius: 28 },
+  /* ---------- widgets (cartes) ----------
+     style  : 'glass' (verre sombre) | 'solid' | 'outline' | 'neon'
+     border : 'none' | 'spotlight' (suit la souris) | 'gradient' (anneau animé)   */
+  card: { style: 'glass', border: 'none', opacity: 0.5, blur: 16, radius: 26 },
 
   /* ---------- décorations ---------- */
   decor: {
-    orbs: true,                     // orbes lumineuses flottantes derrière la carte
-    noise: true,                    // grain fin (rend le verre plus "physique")
+    dots: true,                     // trame de points (halftone) sur le fond
     vignette: true,                 // assombrit les bords
+    noise: false,                   // grain fin
+    orbs: false,                    // orbes lumineuses flottantes
     scanlines: false,               // lignes de balayage rétro
   },
 
   /* ---------- effets ----------
-     particles : 'fireflies' | 'snow' | 'stars' | 'shooting' | 'bokeh' | 'rain' | 'none' */
+     particles : 'none' | 'snow' | 'fireflies' | 'stars' | 'shooting' | 'bokeh' | 'rain' */
   effects: {
-    particles: 'fireflies',
-    tilt: true,                     // la carte suit la souris en 3D
-    cursor: true,                   // curseur personnalisé
-    trail: true,                    // étincelles derrière le curseur
-    glitch: true,                   // le nom "glitch" de temps en temps
+    particles: 'none',
+    tilt: true,                     // la page suit légèrement la souris en 3D
     spotlight: true,                // halo lumineux qui suit la souris
     ripple: true,                   // onde au clic
+    cursor: false,                  // curseur personnalisé
+    trail: false,                   // étincelles derrière le curseur
+    glitch: false,                  // le nom "glitch" de temps en temps
   },
 
   /* ---------- Discord en direct (via l'API publique Lanyard) ----------
@@ -91,18 +96,18 @@ window.BIO_CONFIG = {
     id: '',
     demo: true,                     // true = fausse activité de démonstration
     useAvatar: false,               // true = utilise ton avatar Discord à la place du tien
-    tag: 'nova',                    // texte copié au clic sur l'icône Discord
+    tag: 'nova',                    // pseudo affiché dans le widget et copié au clic sur l'icône Discord
   },
 
   /* ---------- compteur de vues ----------
      base : valeur de départ. endpoint : URL optionnelle d'un compteur global
      qui répond { "value": 123 } (sinon le compteur est local au navigateur).   */
-  views: { base: 1284, endpoint: '' },
+  views: { base: 135, endpoint: '' },
 
   /* ---------- musique ----------
      Sans pistes, le site joue 3 ambiances générées EN DIRECT dans le navigateur
      (aucun fichier audio nécessaire). Pour tes propres sons :
-       tracks: [{ title: 'Mon son', artist: 'Moi', src: 'assets/son.mp3', cover: 'assets/cover.jpg' }]
+       tracks: [{ title: 'Mon son', artist: 'Moi', src: 'assets/son.mp3', cover: 'assets/cover.jpg', tag: 'Explicit' }]
      Pour que le visualiseur réagisse à un fichier hébergé ailleurs, ajoute cors: true
      (le serveur doit envoyer l'en-tête Access-Control-Allow-Origin).             */
   music: { autoplay: true, volume: 0.55, tracks: [] },
@@ -113,7 +118,6 @@ window.BIO_CONFIG = {
   badges: [
     { icon: 'crown', label: 'Fondateur' },
     { icon: 'code', label: 'Développeur' },
-    { icon: 'headphones', label: 'Mélomane' },
     { icon: 'moon', label: 'Oiseau de nuit' },
   ],
 
@@ -123,19 +127,18 @@ window.BIO_CONFIG = {
      Pour Discord, un clic copie le tag au lieu d'ouvrir un lien.                 */
   socials: [
     { icon: 'discord', label: 'Discord', copy: 'nova' },
+    { icon: 'tiktok', label: 'TikTok', url: 'https://tiktok.com/' },
+    { icon: 'roblox', label: 'Roblox', url: 'https://roblox.com/' },
     { icon: 'github', label: 'GitHub', url: 'https://github.com/' },
     { icon: 'x', label: 'X / Twitter', url: 'https://x.com/' },
     { icon: 'instagram', label: 'Instagram', url: 'https://instagram.com/' },
-    { icon: 'tiktok', label: 'TikTok', url: 'https://tiktok.com/' },
     { icon: 'youtube', label: 'YouTube', url: 'https://youtube.com/' },
-    { icon: 'twitch', label: 'Twitch', url: 'https://twitch.tv/' },
     { icon: 'spotify', label: 'Spotify', url: 'https://open.spotify.com/' },
   ],
 
   /* ---------- gros boutons de liens ---------- */
   links: [
     { icon: 'globe', label: 'Mon portfolio', sub: 'projets & expériences', url: 'https://example.com' },
-    { icon: 'code', label: 'Open source', sub: 'le code est libre', url: 'https://github.com/' },
     { icon: 'mail', label: 'Me contacter', sub: 'hello@example.com', url: 'mailto:hello@example.com' },
   ],
 

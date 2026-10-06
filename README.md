@@ -1,6 +1,6 @@
 # ✦ biolink
 
-Une page de **bio link** moderne, 100 % statique (HTML + CSS + JS, **aucune dépendance, aucun build**) — dans l'esprit des sites type *guns.lol* / *drift.rip*, avec un **dashboard visuel** pour tout régler sans toucher au code, et quelques surprises en plus.
+Une page de **bio link** minimaliste et moderne, 100 % statique (HTML + CSS + JS, **aucune dépendance, aucun build**) — dans l'esprit de *drift.rip* / *guns.lol* : des **widgets** empilés en verre sombre sur un fond monochrome, un **dashboard visuel** pour tout régler sans toucher au code, et quelques surprises en plus.
 
 ```
 index.html      → ta page publique
@@ -15,26 +15,30 @@ npx http-server -p 8080 .
 
 ## Fonctionnalités
 
-**Le socle**
+**Les widgets** (activables et réordonnables)
+
+- **Profil** : bannière (image ou dégradé), avatar (rond / arrondi / hexagone, anneau optionnel), nom avec halo, badges, accroche qui s'écrit en boucle, localisation, heure locale, UID, icônes de réseaux (20 marques embarquées, bouton « + » au-delà de N)
+- **À propos** : un court texte libre
+- **Vues** : compteur animé en pastille
+- **Discord** : présence en direct (pseudo, statut, statut perso, jeu ou Spotify) via l'API publique [Lanyard](https://github.com/Phineas/lanyard)
+- **Musique** : pochette, titre, étiquette (ex. *Explicit*), lecture / précédent / suivant, progression avec temps, volume
+- **Liens** : les gros boutons, chacun dans sa carte
+
+**Le style**
 
 - Écran d'entrée « cliquer pour entrer » (qui déclenche aussi la musique, comme les navigateurs l'exigent)
-- Carte avec **bannière** (image ou dégradé animé), avatar (rond / arrondi / hexagone, anneau tournant ou pulsé), nom, badges avec infobulles, bio qui s'écrit en boucle, localisation, heure locale, UID
-- Compteur de vues animé
-- Icônes de réseaux (20 marques embarquées) + gros boutons de liens
-- Présence **Discord en direct** (statut, activité/jeu, Spotify) via l'API publique [Lanyard](https://github.com/Phineas/lanyard)
-- Lecteur de musique : play/pause, précédent/suivant, volume, progression, visualiseur
-- 8 thèmes de couleurs + couleurs libres, 8 polices (Google Fonts), styles de nom (dégradé animé, néon, arc-en-ciel, simple), styles de carte (verre dépoli, pleine, contour, néon) et de boutons (verre, plein, contour, néon), bordure projecteur ou anneau animé
-- Fonds : **fluide WebGL** réactif à la musique, **aurore** (CSS), **grille rétro** synthwave, vidéo, image, sobre
-- Particules : lucioles, neige, étoiles, **étoiles filantes**, **bokeh**, pluie
-- Décorations : orbes flottantes, **grain**, vignette, **scanlines**
-- Interactions : inclinaison 3D, halo du curseur, curseur personnalisé, traînée d'étincelles, onde au clic, boutons magnétiques, glitch du nom
+- 9 thèmes dont **Blanc** (monochrome, par défaut) + couleurs libres, 8 polices (Google Fonts), styles de nom (halo, dégradé animé, arc-en-ciel, simple), styles de widget (verre sombre, plein, contour, néon) et de boutons, bordure projecteur ou anneau animé
+- Fonds : **fluide** réactif à la musique (WebGL), **aurore** (CSS), **grille rétro** synthwave, vidéo, image, sobre — chacun passable en **noir & blanc**
+- Décorations : **trame de points** (halftone), vignette, grain, orbes, scanlines
+- Particules (désactivées par défaut) : neige, lucioles, étoiles, étoiles filantes, bokeh, pluie
+- Interactions : inclinaison 3D légère, halo du curseur, onde au clic, boutons magnétiques ; en option curseur personnalisé, traînée d'étincelles, glitch du nom
 - Responsive, `prefers-reduced-motion` respecté, navigation clavier
 
 **Le dashboard** (`dashboard.html`)
 
-- Formulaire complet par sections (profil, apparence, fond & effets, liens, réseaux, badges, musique, Discord, avancé)
+- Vue d'ensemble (URL, vues, widgets, réseaux, liens, thème) puis formulaire par sections (profil, **disposition des widgets**, apparence, fond & effets, liens, réseaux, badges, musique, Discord, avancé)
 - **Aperçu en direct** dans un cadre téléphone ou ordinateur — chaque réglage est appliqué instantanément
-- 6 **modèles** prêts à l'emploi (Nébuleuse, Aurore, Synthwave, Minimal, Sakura, Luxe) qui gardent tes textes et liens
+- 7 **modèles** prêts à l'emploi (Minimal, Nébuleuse, Aurore, Synthwave, Sobre, Sakura, Luxe) qui gardent tes textes et liens
 - Listes **réordonnables** (glisser-déposer ou flèches), dupliquer, supprimer ; sélecteur d'icônes avec recherche
 - Import d'images (avatar, bannière, fond) redimensionnées et intégrées, ou simples chemins vers `assets/`
 - Brouillon sauvegardé automatiquement dans le navigateur ; **Importer** un `config.js` existant ; **Copier** ou **Télécharger config.js** (`Ctrl+S`)
@@ -64,17 +68,20 @@ Les images importées sont intégrées dans `config.js` (en base64). Pour garder
 
 ### À la main
 
-Tout est dans [`config.js`](config.js), commenté en français : identité, bannière, police, styles, fond, couleurs, carte, décorations, effets, Discord, compteur, musique, badges, réseaux, liens.
+Tout est dans [`config.js`](config.js), commenté en français : identité, à propos, disposition, bannière, police, styles, fond, couleurs, widgets, décorations, effets, Discord, compteur, musique, badges, réseaux, liens.
 
 ```js
 avatar: 'assets/moi.png',
 banner: 'assets/banniere.jpg',        // ou 'gradient', ou '' pour aucune
-font: 'syne',                         // space | inter | sora | outfit | poppins | syne | playfair | mono
-nameStyle: 'neon',                    // shimmer | neon | rainbow | plain
-background: { type: 'aurora', src: '', dim: 0.2, blur: 0 },   // shader | aurora | grid | video | image | none
-card: { style: 'glass', border: 'gradient', opacity: 0.5, blur: 24, radius: 28 },
-effects: { particles: 'shooting', tilt: true, spotlight: true, ripple: true, /* … */ },
-music: { tracks: [{ title: 'Mon son', artist: 'Moi', src: 'assets/son.mp3', cover: 'assets/cover.jpg' }] },
+about: 'Just click and sleep',
+layout: ['profile', 'about', 'views', 'discord', 'music', 'links'],   // retire un widget pour le masquer
+socialsLimit: 5,                      // icônes visibles avant le « + »
+font: 'inter',                        // inter | space | sora | outfit | poppins | syne | playfair | mono
+nameStyle: 'neon',                    // neon | shimmer | rainbow | plain
+background: { type: 'shader', src: '', dim: 0.35, blur: 0, mono: true },   // shader | aurora | grid | video | image | none
+card: { style: 'glass', border: 'none', opacity: 0.5, blur: 16, radius: 26 },
+decor: { dots: true, vignette: true, noise: false, orbs: false, scanlines: false },
+music: { tracks: [{ title: 'Mon son', artist: 'Moi', src: 'assets/son.mp3', cover: 'assets/cover.jpg', tag: 'Explicit' }] },
 ```
 
 Sans `tracks`, ce sont les ambiances générées qui jouent. Pour des fichiers hébergés sur un autre domaine, ajoute `cors: true` à la piste si tu veux que le visualiseur réagisse (le serveur doit envoyer `Access-Control-Allow-Origin`) ; sinon le fichier joue normalement et le visualiseur est simulé.
@@ -109,7 +116,7 @@ js/
   background.js    shader WebGL, particules, pluie matrix
   audio.js         synthé génératif + lecteur de fichiers
   presence.js      Discord (Lanyard) + mode démo
-  ui.js            carte, écran d'entrée, lecteur, tilt, curseur, ripple
+  ui.js            widgets, écran d'entrée, lecteur, tilt, curseur, ripple
   overlays.js      palette, terminal, réglages rapides
   main.js          démarrage, réglages, raccourcis, Konami, rave, pont avec l'aperçu
   dashboard.js     l'éditeur

@@ -137,6 +137,18 @@ window.BIO_CONFIG = {
      Apple Music ou Deezer : il est converti en lecteur intégré.                 */
   embed: { url: '', title: '' },
 
+  /* ---------- abonnement ----------
+     plan : 'free' | 'premium' | 'vip' — déclaratif (site statique, aucune vérification).
+     Les fonctions réservées à un plan supérieur sont remplacées par un repli sûr.
+     checkout : liens de paiement hébergés (Stripe Payment Link, Ko-fi…) utilisés
+     par les boutons de la page d'accueil (index.html).                           */
+  premium: {
+    plan: 'premium',
+    checkout: { premium: '', vip: '' },
+    badge: true,                    // icône Premium / VIP à côté du nom
+    branding: false,                // false = retire « Fait avec biolink » (Premium et plus)
+  },
+
   /* ---------- compteur de vues ----------
      base : valeur de départ. endpoint : URL optionnelle d'un compteur global
      qui répond { "value": 123 } (sinon le compteur est local au navigateur).   */

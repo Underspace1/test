@@ -132,6 +132,20 @@ Colle un lien de partage dans `embed.url` : `https://open.spotify.com/track/…`
 
 Sans serveur, le compteur est **local** : `base` + 1 par jour et par navigateur. Pour un vrai compteur global, renseigne `views.endpoint` avec l'URL d'un service qui répond `{ "value": 123 }`.
 
+## Abonnement premium
+
+biolink est statique : il n'y a ni compte ni vérification de paiement. Le plan est **déclaratif** (`premium.plan` dans `config.js` : `free`, `premium` ou `vip`), le paiement passe par un **lien hébergé** (Stripe Payment Link, Ko-fi, PayPal…) renseigné dans `premium.checkout`, et la page d'accueil (`index.html`) présente les trois niveaux avec leurs prix (définis dans `site.js`).
+
+| Plan | Prix | Débloque |
+|---|---|---|
+| Gratuit | 0 € | profil, à propos, vues, Discord, musique générée, 5 liens, 9 thèmes, 3 polices, fonds fluide / aurore / grille / image, dashboard complet ; mention « Fait avec biolink » |
+| Premium | 3 €/mois · 30 €/an | widgets Roblox, osu! et lecteur intégré, pistes audio personnelles, 8 polices, particules, anneau d'avatar, liens sans limite, badge Premium, retrait de la mention |
+| VIP | 6 €/mois · 60 €/an | fond vidéo, curseur personnalisé, traînée d'étincelles, glitch du nom, anneau animé autour des cartes, compteur de vues global, badge VIP doré |
+
+Quand un réglage dépasse le plan déclaré, la page applique un **repli sûr** (fond fluide à la place de la vidéo, police Inter, particules désactivées, cinq premiers liens…) et rien ne casse. Dans le dashboard, le réglage porte l'étiquette du plan requis ; ta valeur reste dans le brouillon et dans `config.js` exporté, et se réactive dès que tu passes au plan supérieur. La table des verrous est `Bio.gates` dans `js/util.js`.
+
+Parcours : le visiteur paie sur la page du prestataire → tu ouvres le dashboard, section **Abonnement** → tu sélectionnes le plan → **Télécharger config.js**.
+
 ## Déployer
 
 Site statique : GitHub Pages, Netlify, Vercel, Cloudflare Pages… il suffit de servir le dossier tel quel (pas de build). Tu peux supprimer `dashboard.html`, `css/dashboard.css` et `js/dashboard.js` du déploiement si tu ne veux pas exposer l'éditeur (il ne modifie rien côté serveur de toute façon : il ne fait que générer un `config.js`).
@@ -142,7 +156,8 @@ Site statique : GitHub Pages, Netlify, Vercel, Cloudflare Pages… il suffit de 
 index.html         page d’accueil
 profile.html       page publique (profil)
 dashboard.html     éditeur visuel
-config.js          ← ta configuration
+config.js          ← ta configuration (profil, plan, liens de paiement)
+site.js            textes, sections, tarifs et FAQ de la page d'accueil
 css/style.css      styles de la page
 css/dashboard.css  styles de l'éditeur
 assets/            avatar, favicon (mets tes images ici)
@@ -156,6 +171,7 @@ js/
   overlays.js      palette, terminal, réglages rapides
   main.js          démarrage, réglages, raccourcis, Konami, rave, pont avec l'aperçu
   dashboard.js     l'éditeur
+  landing.js       page d'accueil (rendue depuis site.js)
   icons.js         logos de marques (Simple Icons, CC0)
 ```
 

@@ -412,16 +412,39 @@
   };
   Bio.planRank = (plan) => (Bio.plans[plan] || Bio.plans.free).rank;
   Bio.allows = (plan, minPlan) => Bio.planRank(plan) >= Bio.planRank(minPlan);
-  // { path, min, label, test?(value) → true si la valeur exige le plan, fallback: valeur ou fonction(cfg) }
-  Bio.gates = [];
+  // { path, min, label, test(value, cfg) → true si la valeur exige le plan, fallback: valeur ou fonction(value, cfg) }
+  const RESERVED_WIDGETS = ['roblox', 'osu', 'embed'];
+  const FREE_FONTS = ['inter', 'space', 'mono'];
+  Bio.gates = [
+    { path: 'layout', min: 'premium', label: 'Widgets Roblox, osu! et lecteur intégré', test: (v) => Array.isArray(v) && v.some((id) => RESERVED_WIDGETS.includes(id)), fallback: (v) => v.filter((id) => !RESERVED_WIDGETS.includes(id)), items: RESERVED_WIDGETS },
+    { path: 'font', min: 'premium', label: 'Polices Sora, Outfit, Poppins, Syne et Playfair', test: (v) => !FREE_FONTS.includes(v), fallback: 'inter' },
+    { path: 'effects.particles', min: 'premium', label: 'Particules', test: (v) => v !== 'none', fallback: 'none' },
+    { path: 'avatarRing', min: 'premium', label: 'Anneau d’avatar', test: (v) => v !== 'none', fallback: 'none' },
+    { path: 'music.tracks', min: 'premium', label: 'Pistes audio personnelles', test: (v) => Array.isArray(v) && v.length > 0, fallback: [] },
+    { path: 'links', min: 'premium', label: 'Plus de 5 liens', test: (v) => Array.isArray(v) && v.length > 5, fallback: (v) => v.slice(0, 5), limit: 5 },
+    { path: 'premium.branding', min: 'premium', label: 'Retrait de la mention « Fait avec biolink »', test: (v) => v === false, fallback: true },
+    { path: 'premium.badge', min: 'premium', label: 'Badge de plan à côté du nom', test: (v) => v === true, fallback: false },
+    { path: 'background.type', min: 'vip', label: 'Fond vidéo en boucle', test: (v) => v === 'video', fallback: 'shader' },
+    { path: 'card.border', min: 'vip', label: 'Anneau animé autour des cartes', test: (v) => v === 'gradient', fallback: 'none' },
+    { path: 'effects.cursor', min: 'vip', label: 'Curseur personnalisé', test: (v) => v === true, fallback: false },
+    { path: 'effects.trail', min: 'vip', label: 'Traînée d’étincelles', test: (v) => v === true, fallback: false },
+    { path: 'effects.glitch', min: 'vip', label: 'Glitch du nom', test: (v) => v === true, fallback: false },
+    { path: 'views.endpoint', min: 'vip', label: 'Compteur de vues global (endpoint)', test: (v) => !!v, fallback: '' },
+  ];
   Bio.gateFor = (path) => Bio.gates.find((g) => g.path === path) || null;
+  // verrou présent et plan insuffisant (indépendamment de la valeur courante)
   Bio.locked = (cfg, path) => { const g = Bio.gateFor(path); return !!g && !Bio.allows(cfg.premium.plan, g.min); };
+  // une option précise d'un champ à choix exige-t-elle un plan supérieur ?
+  Bio.lockedOption = (cfg, path, value) => { const g = Bio.gateFor(path); return !!g && !Bio.allows(cfg.premium.plan, g.min) && !!g.test(value, cfg); };
+  // verrous dont la valeur déclarée tombera en repli (sans rien modifier)
+  Bio.fallbacks = (cfg) => Bio.gates.filter((g) => !Bio.allows(cfg.premium.plan, g.min) && g.test(U.getPath(cfg, g.path), cfg)).map((g) => g.path);
+  // applique les replis à la config (effective) et renvoie les chemins touchés
   Bio.entitlements = (cfg) => {
     const applied = [];
     for (const g of Bio.gates) {
       if (Bio.allows(cfg.premium.plan, g.min)) continue;
       const v = U.getPath(cfg, g.path);
-      if (g.test ? !g.test(v, cfg) : !v) continue;
+      if (!g.test(v, cfg)) continue;
       U.setPath(cfg, g.path, typeof g.fallback === 'function' ? g.fallback(v, cfg) : g.fallback);
       applied.push(g.path);
     }
@@ -485,7 +508,8 @@
     'osu.mode': ['osu', 'taiko', 'fruits', 'mania'],
     theme: Object.keys(Bio.themes),
   };
-  Bio.normalize = (cfg) => {
+  /* opts.enforce === false → pas de repli (brouillon du dashboard : les valeurs déclarées sont conservées) */
+  Bio.normalize = (cfg, opts) => {
     const out = U.deepMerge(Bio.defaults, cfg || {});
     for (const path of Object.keys(Bio.enums)) {
       const v = U.getPath(out, path);
@@ -497,12 +521,13 @@
     out.about = String(out.about || '');
     ['roblox', 'osu', 'embed', 'premium'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
     if (!Bio.plans[out.premium.plan]) out.premium.plan = 'free';
-    out.locked = Bio.entitlements(out);
+    if (!out.premium.checkout || typeof out.premium.checkout !== 'object') out.premium.checkout = { premium: '', vip: '' };
+    out.locked = opts && opts.enforce === false ? [] : Bio.entitlements(out);
     out.socialsLimit = Math.max(0, parseInt(out.socialsLimit, 10) || 0);
     ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     if (!Array.isArray(out.music.tracks)) out.music.tracks = [];
     return out;
   };
 
-  Bio.serialize = (cfg) => '/* Config générée par le dashboard — remplace le contenu de config.js */\nwindow.BIO_CONFIG = ' + JSON.stringify(cfg, null, 2) + ';\n';
+  Bio.serialize = (cfg) => { const c = Object.assign({}, cfg); delete c.locked; return '/* Config générée par le dashboard — remplace le contenu de config.js */\nwindow.BIO_CONFIG = ' + JSON.stringify(c, null, 2) + ';\n'; };
 })();

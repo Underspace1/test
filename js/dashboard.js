@@ -10,9 +10,9 @@
 
   /* --------------------------------------------------------------- état */
   const D = (window.Dash = { cfg: null, dirty: false, syncs: [], ready: false, device: 'phone' });
-  const original = Bio.normalize(window.BIO_CONFIG || {});
+  const original = Bio.normalize(window.BIO_CONFIG || {}, { enforce: false });
   const draft = store.get('dash-draft', null);
-  D.cfg = draft ? Bio.normalize(draft) : U.deepMerge({}, original);
+  D.cfg = draft ? Bio.normalize(draft, { enforce: false }) : U.deepMerge({}, original);
   D.dirty = !!draft;
 
   const get = (p) => U.getPath(D.cfg, p);
@@ -30,7 +30,7 @@
   function set(path, val, opts = {}) {
     U.setPath(D.cfg, path, val);
     const g = Bio.gateFor(path);
-    if (g && !Bio.allows(D.cfg.premium.plan, g.min) && (g.test ? g.test(val, D.cfg) : !!val)) { setTimeout(enforce, 0); }
+    if (g && !Bio.allows(D.cfg.premium.plan, g.min) && g.test(val, D.cfg)) { setTimeout(enforce, 0); }
     D.dirty = true;
     setStatus();
     saveDraft();
@@ -39,7 +39,7 @@
     else if (D.heroSync) D.heroSync();
   }
   function replaceConfig(next) {
-    D.cfg = Bio.normalize(next);
+    D.cfg = Bio.normalize(next, { enforce: false });
     D.dirty = true;
     setStatus();
     saveDraft();
@@ -92,16 +92,23 @@
     const lab = h(opts.stack ? 'div' : 'label', { class: opts.stack ? 'f-label' : null }, h('span', { class: 'f-lt' }, label, lockTag), opts.hint ? h('small', { text: opts.hint }) : null);
     const el = h('div', { class: 'field' + (opts.stack ? ' stack' : ''), 'data-gate': gate ? opts.path : null }, lab, h('div', { class: 'f-ctl' + (opts.col ? ' col' : '') }, ctl));
     if (gate) {
-      const paint = () => el.classList.toggle('locked', Bio.locked(D.cfg, opts.path));
+      const paint = () => {
+        const locked = Bio.locked(D.cfg, opts.path);
+        el.classList.toggle('gated', locked);
+        el.classList.toggle('locked', locked && !opts.partial);
+        el.classList.toggle('fallback', locked && gate.test(U.getPath(D.cfg, opts.path), D.cfg));
+        lockTag.hidden = !locked;
+      };
       D.syncs.push(paint);
       paint();
     }
     return el;
   }
-  // après un changement, les verrous sont ré-appliqués (replis) et le dashboard reflète la valeur effective
+  // le brouillon n'est jamais modifié : on signale seulement les replis que l'aperçu applique
   function enforce() {
-    const applied = Bio.entitlements(D.cfg);
-    if (applied.length) { syncAll(); U.toast('Fonction réservée au plan ' + Bio.plans[Bio.gateFor(applied[0]).min].label + ' — repli appliqué', 'lock'); }
+    const fb = Bio.fallbacks(D.cfg);
+    syncAll();
+    if (fb.length) U.toast(fb.length + (fb.length > 1 ? ' réglages réservés — replis appliqués dans l’aperçu' : ' réglage réservé — repli appliqué dans l’aperçu'), 'lock');
   }
 
   F.text = (f) => {
@@ -150,10 +157,10 @@
       wrap.append(b);
       return [val, b];
     });
-    const paint = () => btns.forEach(([v, b]) => b.setAttribute('aria-checked', get(f.path) === v ? 'true' : 'false'));
+    const paint = () => btns.forEach(([v, b]) => { b.setAttribute('aria-checked', get(f.path) === v ? 'true' : 'false'); const lk = Bio.lockedOption(D.cfg, f.path, v); b.classList.toggle('opt-locked', lk); b.disabled = lk && get(f.path) !== v; b.title = lk ? 'Plan ' + Bio.plans[Bio.gateFor(f.path).min].label : ''; });
     D.syncs.push(paint);
     paint();
-    return field(f.label, wrap, f);
+    return field(f.label, wrap, Object.assign({ partial: true }, f));
   };
   // cartes de choix avec aperçu (polices, styles…)
   F.choice = (f) => {
@@ -161,15 +168,16 @@
     const btns = f.options.map((o) => {
       const b = h('button', { type: 'button', role: 'radio', class: 'choice' },
         o.preview ? o.preview() : o.icon ? Bio.icon(o.icon, 20) : null,
-        h('span', { text: o.label }), o.desc ? h('span', { class: 'choice-desc', text: o.desc }) : null);
+        h('span', { text: o.label }), o.desc ? h('span', { class: 'choice-desc', text: o.desc }) : null,
+        h('span', { class: 'opt-lock', hidden: true }, Bio.icon('lock', 11)));
       b.addEventListener('click', () => { set(f.path, o.value, { sync: !!f.sync }); paint(); });
       wrap.append(b);
       return [o.value, b];
     });
-    const paint = () => btns.forEach(([v, b]) => b.setAttribute('aria-checked', get(f.path) === v ? 'true' : 'false'));
+    const paint = () => btns.forEach(([v, b]) => { b.setAttribute('aria-checked', get(f.path) === v ? 'true' : 'false'); const lk = Bio.lockedOption(D.cfg, f.path, v); b.classList.toggle('opt-locked', lk); b.querySelector('.opt-lock').hidden = !lk; b.disabled = lk && get(f.path) !== v; b.title = lk ? 'Plan ' + Bio.plans[Bio.gateFor(f.path).min].label : ''; });
     D.syncs.push(paint);
     paint();
-    return field(f.label, wrap, Object.assign({ stack: true }, f));
+    return field(f.label, wrap, Object.assign({ stack: true, partial: true }, f));
   };
   F.color = (f) => {
     const eff = () => { const c = Bio.themeColors(D.cfg); return f.path === 'accent' ? c.a : c.b; };
@@ -245,6 +253,11 @@
   };
   F.note = (f) => h('div', { class: 'note' }, Bio.icon('info', 16), h('div', {}, f.content()));
 
+  F.testlinks = () => {
+    const mk = (id) => { const b = h('button', { type: 'button', class: 'btn sm' }, Bio.icon('external', 13), 'Tester le lien ' + Bio.plans[id].label); b.addEventListener('click', () => { const u = get('premium.checkout.' + id); if (!/^https:\/\//.test(u || '')) { U.toast('Renseigne d’abord un lien https', 'close'); return; } window.open(u, '_blank', 'noopener'); }); return b; };
+    return h('div', { class: 'f-ctl', style: { gap: '8px', padding: '6px 0' } }, mk('premium'), mk('vip'));
+  };
+
   F.planpicker = () => {
     const site = window.BIO_SITE || {};
     const tiers = (site.pricing && site.pricing.tiers) || [];
@@ -262,11 +275,17 @@
         wrap.append(b);
       });
       gatesList.textContent = '';
-      Bio.gates.forEach((g) => gatesList.append(h('li', { class: Bio.allows(get('premium.plan'), g.min) ? 'ok' : 'no' }, Bio.icon(Bio.allows(get('premium.plan'), g.min) ? 'check' : 'lock', 13), h('span', { text: g.label }), h('small', { text: Bio.plans[g.min].label }))));
+      const fb = Bio.fallbacks(D.cfg);
+      Bio.gates.forEach((g) => {
+        const ok = Bio.allows(get('premium.plan'), g.min), active = fb.includes(g.path);
+        gatesList.append(h('li', { class: ok ? 'ok' : active ? 'no active' : 'no' }, Bio.icon(ok ? 'check' : 'lock', 13), h('span', { text: g.label }), active ? h('em', { text: 'repli actif' }) : null, h('small', { text: Bio.plans[g.min].label })));
+      });
     };
     D.syncs.push(paint);
     paint();
-    return field('Plan actif', h('div', { class: 'f-ctl col', style: { alignItems: 'stretch', gap: '14px' } }, wrap, h('div', { class: 'gates-wrap' }, h('p', { class: 'gates-k', text: 'Fonctions selon le plan' }), gatesList)), { stack: true, hint: 'Déclare ici le plan que tu as choisi : les fonctions réservées se débloquent dans le dashboard et sur ta page.' });
+    return field('Plan actif', h('div', { class: 'f-ctl col', style: { alignItems: 'stretch', gap: '14px' } }, wrap,
+      h('p', { class: 'gates-note', text: 'Plan déclaratif : biolink ne vérifie aucun paiement, config.js fait foi. Les réglages réservés restent dans ton brouillon et se réactivent dès que tu passes au plan supérieur.' }),
+      h('div', { class: 'gates-wrap' }, h('p', { class: 'gates-k', text: 'Fonctions selon le plan' }), gatesList)), { stack: true, hint: 'Déclare ici le plan que tu as choisi : les fonctions réservées se débloquent dans le dashboard et sur ta page.' });
   };
 
   // disposition : widgets actifs (dans l'ordre) puis inactifs ; monter / descendre / activer
@@ -281,12 +300,13 @@
         const w = Bio.widgets[id];
         const active = on.includes(id);
         const idx = on.indexOf(id);
-        const sw = h('button', { type: 'button', class: 'sw', role: 'switch', 'aria-checked': active ? 'true' : 'false', 'aria-label': 'Afficher ' + w.label });
+        const lk = Bio.lockedOption(D.cfg, 'layout', [id]);
+        const sw = h('button', { type: 'button', class: 'sw', role: 'switch', 'aria-checked': active ? 'true' : 'false', 'aria-label': 'Afficher ' + w.label, disabled: lk && !active });
         sw.addEventListener('click', () => { set('layout', active ? on.filter((x) => x !== id) : on.concat(id)); render(); });
         const mk = (icon, label, fn, disabled) => h('button', { type: 'button', title: label, 'aria-label': label, disabled, onclick: fn }, Bio.icon(icon, 15));
-        const row = h('div', { class: 'layout-item' + (active ? '' : ' off') },
+        const row = h('div', { class: 'layout-item' + (active ? '' : ' off') + (lk ? ' lk' : '') },
           h('span', { class: 'ibtn' }, Bio.icon(w.icon, 17)),
-          h('span', { class: 'title' }, w.label, h('small', { text: w.desc })),
+          h('span', { class: 'title' }, w.label, lk ? h('span', { class: 'lock', 'data-min': 'premium' }, Bio.icon('lock', 11), active ? 'Premium · non publié' : 'Premium') : null, h('small', { text: w.desc })),
           h('span', { class: 'acts' },
             mk('up', 'Monter', () => { const a = on.slice(); a.splice(idx - 1, 0, a.splice(idx, 1)[0]); set('layout', a); render(); }, !active || idx === 0),
             mk('down', 'Descendre', () => { const a = on.slice(); a.splice(idx + 1, 0, a.splice(idx, 1)[0]); set('layout', a); render(); }, !active || idx === on.length - 1)),
@@ -296,7 +316,7 @@
     };
     D.syncs.push(render);
     render();
-    return field(f.label, list, Object.assign({ stack: true }, f));
+    return field(f.label, list, Object.assign({ stack: true, partial: true }, f));
   };
 
   /* redimensionne une image importée (les GIF/SVG sont gardés tels quels pour préserver l'animation) */
@@ -373,6 +393,10 @@
       list.textContent = '';
       const arr = items();
       if (!arr.length) { list.append(h('div', { class: 'list-empty', text: f.empty || 'Rien pour l’instant.' })); return; }
+      const gate = Bio.gateFor(f.path);
+      const limit = gate && gate.limit && Bio.locked(D.cfg, f.path) ? gate.limit : Infinity;
+      add.disabled = arr.length >= limit;
+      add.title = add.disabled ? 'Plus de ' + limit + ' liens : plan ' + Bio.plans[gate.min].label : '';
       arr.forEach((item, idx) => {
         const title = h('span', { class: 'title' });
         const paintTitle = () => {
@@ -401,7 +425,7 @@
           return h('label', { class: sf.full ? 'full' : null }, sf.label, i);
         }));
         const grip = h('span', { class: 'grip', title: 'Glisser pour réordonner' }, Bio.icon('grip', 16));
-        const el = h('div', { class: 'item', draggable: 'true' }, h('div', { class: 'item-head' }, grip, ibtn, title, acts), body);
+        const el = h('div', { class: 'item' + (idx >= limit ? ' unpublished' : ''), draggable: 'true' }, h('div', { class: 'item-head' }, grip, ibtn, title, idx >= limit ? h('span', { class: 'lock', 'data-min': gate.min, title: 'Non publié : plan ' + Bio.plans[gate.min].label }, Bio.icon('lock', 11), 'non publié') : null, acts), body);
         el.addEventListener('dragstart', (e) => { dragIdx = idx; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(idx)); } catch (err) { /* ignore */ } });
         el.addEventListener('dragend', () => { el.classList.remove('dragging'); $$('.item.over', list).forEach((x) => x.classList.remove('over')); });
         el.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('over'); });
@@ -425,7 +449,7 @@
     add.addEventListener('click', () => { items().push(f.make()); commit(); render(); list.lastChild.querySelector('input') && list.lastChild.querySelector('input').focus(); });
     D.syncs.push(render);
     render();
-    return field(f.label, h('div', { class: 'f-ctl col', style: { gap: '12px', alignItems: 'stretch' } }, list, add), Object.assign({ stack: true }, f));
+    return field(f.label, h('div', { class: 'f-ctl col', style: { gap: '12px', alignItems: 'stretch' } }, list, add), Object.assign({ stack: true, partial: !!(Bio.gateFor(f.path) && Bio.gateFor(f.path).limit) }, f));
   };
 
   /* --------------------------------------------------------------- schéma */
@@ -590,8 +614,9 @@
       ] },
       { title: 'Liens de paiement', fields: [
         { type: 'note', content: () => h('span', {}, 'Le site est statique : le paiement passe par un lien hébergé (', h('b', { text: 'Stripe Payment Link' }), ', Ko-fi, PayPal…). Après paiement, choisis ton plan ci-dessus et télécharge config.js. Ces liens sont utilisés par les boutons de la page d’accueil.') },
-        { type: 'text', path: 'premium.checkout.premium', label: 'Lien Premium', placeholder: 'https://buy.stripe.com/…', mono: true },
+        { type: 'text', path: 'premium.checkout.premium', label: 'Lien Premium', placeholder: 'https://buy.stripe.com/…', mono: true, hint: 'https uniquement ; vide = le bouton renvoie vers cette section' },
         { type: 'text', path: 'premium.checkout.vip', label: 'Lien VIP', placeholder: 'https://buy.stripe.com/…', mono: true },
+        { type: 'testlinks' },
       ] },
     ] },
     { id: 'avance', icon: 'cpu', title: 'Avancé', desc: 'Compteur, extras', groups: [
@@ -620,7 +645,7 @@
       name.textContent = c.displayName || c.username;
       stats.textContent = '';
       stats.append(tile('link', 'URL', '/' + c.username), tile('eye', 'Vues', new Intl.NumberFormat('fr-FR').format(c.views.base || 0)), tile('layers', 'Widgets', c.layout.length + ' / ' + Object.keys(Bio.widgets).length),
-        tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile('crown', 'Plan', (Bio.plans[c.premium.plan] || Bio.plans.free).label));
+        tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile((Bio.plans[c.premium.plan] || {}).icon || 'user', 'Plan', (Bio.plans[c.premium.plan] || Bio.plans.free).label));
     };
     D.syncs.push(D.heroSync);
     return el;

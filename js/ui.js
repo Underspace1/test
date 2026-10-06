@@ -58,6 +58,7 @@
     const metaBits = [];
     if (cfg.timezone) metaBits.push(h('span', { class: 'm-time', id: 'chip-time' }, Bio.icon('clock', 12), h('span', { class: 'chip-t', text: '--:--' })));
     metaBits.push(h('span', { text: '@' + cfg.username }));
+    if (cfg.pronouns) metaBits.push(h('span', { class: 'm-pronouns', text: cfg.pronouns }));
     metaBits.push(h('span', { text: 'UID ' + cfg.uid }));
     if (cfg.joined) { const d = new Date(cfg.joined); if (!isNaN(d)) metaBits.push(h('span', { text: 'depuis ' + d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) })); }
     const meta = h('div', { class: 'meta' }, metaBits.flatMap((b, i) => (i ? [h('i', { class: 'sep' }), b] : [b])));
@@ -202,9 +203,9 @@
     const links = Bio.cfg.links || [];
     if (!links.length) return null;
     return h('nav', { class: 'links', 'aria-label': 'Liens' }, links.map((l) =>
-      h('a', { class: 'widget link', 'data-mag': '', href: safeUrl(l.url), target: /^mailto:|^tel:/.test(l.url || '') ? null : '_blank', rel: 'noopener noreferrer' },
+      h('a', { class: 'widget link' + (l.accent ? ' accent' : ''), 'data-mag': '', href: safeUrl(l.url), target: /^mailto:|^tel:/.test(l.url || '') || l.sameTab ? null : '_blank', rel: 'noopener noreferrer' },
         h('span', { class: 'l-ico' }, Bio.icon(l.icon || 'link', 20)),
-        h('span', { class: 'l-txt' }, h('b', { text: l.label }), l.sub ? h('small', { text: l.sub }) : null),
+        h('span', { class: 'l-txt' }, h('b', {}, l.label, l.badge ? h('span', { class: 'l-badge', text: l.badge }) : null), l.sub ? h('small', { text: l.sub }) : null),
         h('span', { class: 'l-go' }, Bio.icon('arrow', 16)))));
   };
 
@@ -261,7 +262,22 @@
     root.dataset.ring = cfg.avatarRing;
     root.classList.toggle('no-glitch', !cfg.effects.glitch);
     root.classList.toggle('has-cursor', !!cfg.effects.cursor && Bio.util.finePointer());
+    root.style.setProperty('--col-w', cfg.page.width + 'px');
+    root.style.setProperty('--col-gap', cfg.page.gap + 'px');
+    root.style.setProperty('--shadow', String(cfg.page.shadow));
+    root.dataset.valign = cfg.page.valign;
     Bio.applyFont(cfg.font);
+    // CSS personnalisé (Premium) : inséré comme texte dans un <style> dédié
+    let st = $('#custom-css');
+    if (!st) { st = h('style', { id: 'custom-css' }); document.head.append(st); }
+    st.textContent = cfg.customCss || '';
+    // SEO : balises mises à jour (utile aux moteurs qui exécutent le JS et aux partages)
+    const setMeta = (sel, attr, val) => { let m = $(sel); if (!val) { if (m && m.dataset.dyn) m.remove(); return; } if (!m) { m = h('meta', { 'data-dyn': '1' }); const [k, v] = sel.replace(/^meta\[|\]$/g, '').split('='); m.setAttribute(k, v.replace(/"/g, '')); document.head.append(m); } m.setAttribute(attr, val); };
+    setMeta('meta[name="description"]', 'content', cfg.seo.description || '');
+    setMeta('meta[property="og:description"]', 'content', cfg.seo.description || '');
+    setMeta('meta[property="og:title"]', 'content', cfg.seo.title || cfg.pageTitle || '@' + cfg.username);
+    setMeta('meta[property="og:image"]', 'content', /^https?:/.test(cfg.seo.image || '') ? cfg.seo.image : '');
+    setMeta('meta[name="robots"]', 'content', cfg.seo.noindex ? 'noindex, nofollow' : '');
   };
 
   UI.setName = function (n) {
@@ -393,6 +409,7 @@
       vol.style.setProperty('--val', vol.value + '%');
       root.classList.toggle('playing', P.playing);
       root.classList.toggle('seekable', t.kind === 'file');
+      root.classList.toggle('no-vol', Bio.cfg.music.showVolume === false);
       cover.textContent = '';
       if (t.cover) cover.append(h('img', { src: safeUrl(t.cover), alt: '' }));
       else cover.append(Bio.icon('music', 22));
@@ -410,6 +427,19 @@
   };
 
   /* ------------------------------------------------------- écran d'entrée */
+  UI.buildAgeGate = function () {
+    const cfg = Bio.cfg;
+    if (!cfg.ageGate.enabled || Bio.preview || store.get('age-ok', false)) return false;
+    const gate = h('div', { class: 'agegate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Vérification' },
+      h('div', { class: 'agegate-box' }, Bio.icon('shield', 26), h('h2', { text: '18+' }), h('p', { text: cfg.ageGate.text || 'Cette page est réservée aux adultes.' }),
+        h('div', { class: 'agegate-btns' },
+          h('button', { type: 'button', class: 'ag-btn primary', text: 'J’ai 18 ans ou plus', onclick: () => { store.set('age-ok', true); gate.remove(); document.body.classList.remove('gated'); } }),
+          h('a', { class: 'ag-btn', href: 'https://www.google.com', text: 'Quitter' }))));
+    document.body.append(gate);
+    document.body.classList.add('gated');
+    return true;
+  };
+
   UI.buildSplash = function () {
     const cfg = Bio.cfg, s = $('#splash');
     s.textContent = '';
@@ -527,7 +557,8 @@
       const k = 1 - Math.pow(0.0005, dt);
       cx += ((on ? tx : 0) - cx) * k;
       cy += ((on ? ty : 0) - cy) * k;
-      col.style.transform = on || Math.abs(cx) + Math.abs(cy) > 0.0005 ? `rotateX(${(-cy * 4).toFixed(3)}deg) rotateY(${(cx * 5).toFixed(3)}deg)` : '';
+      const k2 = Bio.cfg.effects.tiltStrength;
+      col.style.transform = on || Math.abs(cx) + Math.abs(cy) > 0.0005 ? `rotateX(${(-cy * 4 * k2).toFixed(3)}deg) rotateY(${(cx * 5 * k2).toFixed(3)}deg)` : '';
       col.style.setProperty('--bass', Bio.level.bass.toFixed(3));
     });
   };
@@ -583,12 +614,13 @@
   UI.onCfg = function (path) {
     if (path === 'displayName') UI.setName(Bio.cfg.displayName);
     else if (path === 'bio') UI.startTypewriter();
-    else if (/^(card\.|effects\.|font|nameStyle|linkStyle|avatarShape|avatarRing)/.test(path)) UI.applyCard();
+    else if (/^(card\.|effects\.|page\.|font|nameStyle|linkStyle|avatarShape|avatarRing|customCss|seo\.)/.test(path)) UI.applyCard();
     else if (path === 'banner' || path === 'about') Bio.applyConfig(Bio.cfg);
   };
 
   UI.init = function () {
     UI.build();
+    UI.buildAgeGate();
     UI.buildSplash();
     UI.initTilt();
     UI.initPointer();

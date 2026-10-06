@@ -15,6 +15,7 @@
     'card.style', 'card.border', 'card.opacity', 'card.blur', 'card.radius',
     'decor.orbs', 'decor.noise', 'decor.vignette', 'decor.scanlines', 'decor.dots',
     'effects.particles', 'effects.tilt', 'effects.cursor', 'effects.trail', 'effects.glitch', 'effects.spotlight', 'effects.ripple',
+    'effects.density', 'effects.tiltStrength', 'page.width', 'page.gap', 'page.valign', 'page.shadow',
   ];
 
   Bio.set = function (path, val, persist) {

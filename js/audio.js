@@ -388,7 +388,7 @@
         }
       }
       a.volume = this.routed ? 1 : this.muted ? 0 : this.volume;
-      a.addEventListener('ended', () => this.next());
+      a.addEventListener('ended', () => this.next(true));
       a.addEventListener('error', () => { Bio.util.toast('Impossible de lire « ' + tr.title + ' »', 'mute'); this.playing = false; Bio.emit('player'); });
       this.audio = a;
       try { await a.play(); } catch (e) { Bio.util.toast('Lecture bloquée — clique sur ▶', 'play'); this.playing = false; Bio.emit('player'); return; }
@@ -417,7 +417,12 @@
     Bio.emit('player');
     if (this.playing) return this.play();
   };
-  P.next = function () { return this.select(this.index + 1); };
+  P.next = function (auto) {
+    const m = Bio.cfg && Bio.cfg.music || {};
+    if (auto && m.loop === false && this.index === this.tracks.length - 1) { this.pause(); return; }
+    if (m.shuffle && this.tracks.length > 1) { let i; do { i = Math.floor(Math.random() * this.tracks.length); } while (i === this.index); return this.select(i); }
+    return this.select(this.index + 1);
+  };
   P.prev = function () { return this.select(this.index - 1); };
 
   P.setVolume = function (v) {

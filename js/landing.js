@@ -66,29 +66,137 @@
     return h('div', { class: 'showcase' }, dash, phone);
   }
 
-  /* ------------------------------------------------------------ sections */
-  (site.sections || []).forEach((s) => {
-    const body = [];
-    if (s.showcase) body.push(buildCards3());
-    body.push(h('div', { class: 'grid' }, (s.items || []).map((it) => h('article', { class: 'feat reveal' },
-      h('span', { class: 'f-ico' }, Bio.icon(Bio.hasIcon(it.icon) ? it.icon : 'sparkles', 19)), h('h3', { text: it.title }), h('p', { text: it.text })))));
-    main.append(h('section', { class: 'sec', id: s.id }, h('div', { class: 'wrap' },
-      h('div', { class: 'sec-head' + (s.center ? ' center' : '') }, s.kicker ? h('p', { class: 'k', text: s.kicker }) : null, h('h2', { text: s.title }), s.subtitle ? h('p', { text: s.subtitle }) : null), ...body)));
-  });
+  /* ------------------------------------------------------------ slides (scroll) */
+  const VISUALS = {
+    personnalisation: () => buildCards3(),
+    widgets: () => buildWidgetsVisual(),
+    dashboard: () => buildDashVisual(),
+    statique: () => buildCodeVisual(),
+  };
+  const sections = site.sections || [];
+  const storySlides = sections.map((s) => ({ id: s.id, kicker: s.kicker || '', title: s.title, text: s.subtitle || '', visual: VISUALS[s.id] || (() => null), bullets: (s.items || []).slice(0, 3).map((i) => i.title) }));
+  if (storySlides.length) main.append(buildStory(storySlides));
 
+  function buildStory(slides) {
+    const N = slides.length;
+    const dots = h('div', { class: 'story-dots', role: 'tablist', 'aria-label': 'Diapositives' });
+    const bar = h('div', { class: 'story-bar' }, h('i'));
+    const els = slides.map((sl, i) => {
+      const el = h('article', { class: 'slide', 'data-i': i, id: sl.id, 'aria-hidden': i === 0 ? 'false' : 'true' },
+        h('div', { class: 'slide-text' },
+          h('p', { class: 'k' }, h('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), sl.kicker),
+          h('h2', { text: sl.title }), h('p', { class: 'lead', text: sl.text }),
+          sl.bullets.length ? h('ul', { class: 'slide-bullets' }, sl.bullets.map((b) => h('li', {}, Bio.icon('check', 14), h('span', { text: b })))) : null),
+        h('div', { class: 'slide-visual' }, sl.visual()));
+      const dot = h('button', { type: 'button', role: 'tab', 'aria-selected': i === 0 ? 'true' : 'false', 'aria-label': sl.title, 'data-i': i });
+      dot.addEventListener('click', () => scrollToSlide(i));
+      dots.append(dot);
+      return el;
+    });
+    const pin = h('div', { class: 'story-pin' }, h('div', { class: 'story-stage' }, els), dots, bar,
+      h('div', { class: 'story-hint' }, Bio.icon('down', 14), h('span', { text: 'Fais défiler' })));
+    const story = h('section', { class: 'story', id: 'presentation', style: { '--n': N } }, pin);
+
+    let current = -1;
+    const setActive = (idx, local) => {
+      els.forEach((el, i) => {
+        el.classList.toggle('is-active', i === idx);
+        el.classList.toggle('is-prev', i < idx);
+        el.classList.toggle('is-next', i > idx);
+        el.setAttribute('aria-hidden', i === idx ? 'false' : 'true');
+        if (i === idx) el.style.setProperty('--local', local.toFixed(3));
+      });
+      if (idx !== current) { current = idx; dots.querySelectorAll('button').forEach((d, i) => d.setAttribute('aria-selected', i === idx ? 'true' : 'false')); }
+      bar.firstChild.style.transform = 'scaleX(' + ((idx + local) / N).toFixed(4) + ')';
+      pin.classList.toggle('at-end', idx === N - 1 && local > 0.6);
+    };
+    const pinned = () => matchMedia('(min-width: 701px) and (min-height: 560px) and (prefers-reduced-motion: no-preference)').matches;
+    const update = () => {
+      if (!pinned()) { story.classList.add('flat'); els.forEach((el) => { el.classList.add('is-active'); el.classList.remove('is-prev', 'is-next'); el.setAttribute('aria-hidden', 'false'); }); return; }
+      story.classList.remove('flat');
+      const top = story.getBoundingClientRect().top + scrollY;
+      const span = story.offsetHeight - innerHeight;
+      const p = U.clamp((scrollY - top) / Math.max(1, span), 0, 0.9999);
+      const idx = Math.floor(p * N);
+      setActive(idx, p * N - idx);
+    };
+    function scrollToSlide(i) {
+      const top = story.getBoundingClientRect().top + scrollY;
+      const span = story.offsetHeight - innerHeight;
+      window.scrollTo({ top: Math.round(top + (span * (i + 0.15)) / N), behavior: 'smooth' });
+    }
+    let ticking = false;
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); } }, { passive: true });
+    addEventListener('resize', update);
+    addEventListener('keydown', (e) => {
+      if (!pinned() || story.classList.contains('flat')) return;
+      const r = story.getBoundingClientRect();
+      if (r.top > innerHeight * 0.5 || r.bottom < innerHeight * 0.5) return;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') { if (current < N - 1) { e.preventDefault(); scrollToSlide(current + 1); } }
+      if (e.key === 'ArrowUp' || e.key === 'PageUp') { if (current > 0) { e.preventDefault(); scrollToSlide(current - 1); } }
+    });
+    requestAnimationFrame(update);
+    setTimeout(update, 80);
+    return story;
+  }
+
+  /* visuels des slides */
   function buildCards3() {
     const picks = [Bio.presets.find((p) => p.id === 'synthwave'), Bio.presets.find((p) => p.id === 'drift'), Bio.presets.find((p) => p.id === 'sakura')].filter(Boolean);
     return h('div', { class: 'cards3' }, picks.map((p, i) => {
       const mono = p.cfg.background && p.cfg.background.mono;
-      return h('div', { class: 'mini reveal', style: { '--c1': p.colors[0], '--c2': p.colors[1] } },
+      return h('div', { class: 'mini', style: { '--c1': p.colors[0], '--c2': p.colors[1] } },
         h('div', { class: 'bgfx' + (mono ? ' mono' : '') }), p.cfg.decor && p.cfg.decor.dots ? h('div', { class: 'dots' }) : null,
         h('div', { class: 'inner' },
-          h('div', { class: 'w p' }, h('span', { class: 'av' }), h('span', { class: 'nm', text: ['Aggelos', cfg.displayName, 'Lynn'][i] }), h('span', { class: 'tg', text: ['dev @ botforge', 'click & sleep', 'just doing stuff'][i] }), h('span', { class: 'ic' }, h('i'), h('i'), h('i'), h('i'))),
+          h('div', { class: 'w p' }, h('span', { class: 'av' }), h('span', { class: 'nm', text: ['Aggelos', cfg.displayName, 'Lynn'][i] }), h('span', { class: 'tg', text: ['dev @ botforge', cfg.bio[0] || 'click & sleep', 'just doing stuff'][i] }), h('span', { class: 'ic' }, h('i'), h('i'), h('i'), h('i'))),
           h('div', { class: 'w m' }, h('i'), h('span', {}, h('b', { text: ['Chrome Beretta', 'Midnight Drive', 'Heaven With No M…'][i] }), h('small', { text: ['Softwilly', 'lo-fi · généré en direct', 'Yung Lean'][i] }))),
           h('div', { class: 'w l' }, h('i'), ['Mon serveur', 'Mon portfolio', 'My website'][i]),
           h('div', { class: 'w l' }, h('i'), ['Discord', 'Me contacter', 'Instagram'][i])),
         h('span', { class: 'tag', text: 'modèle ' + p.label }));
     }));
+  }
+  function buildWidgetsVisual() {
+    const w = (cls, ...kids) => h('div', { class: 'vw ' + cls }, ...kids);
+    return h('div', { class: 'vis vis-widgets' },
+      w('float a', h('div', { class: 'vw-row' }, h('span', { class: 'vw-av' }), h('div', {}, h('b', { text: cfg.discord.tag || cfg.username }), h('small', { text: 'En ligne · joue à Visual Studio Code' })), h('span', { class: 'vw-dot on' }))),
+      w('float b', h('div', { class: 'vw-row' }, h('span', { class: 'vw-av sq' }), h('div', {}, h('b', { text: cfg.roblox.displayName || 'Roblox' }), h('small', { text: (cfg.roblox.friends || 291) + ' amis · ' + (cfg.roblox.followers || 60) + ' abonnés' })), h('span', { class: 'vw-dot game' }))),
+      w('float c', h('div', { class: 'vw-row' }, h('span', { class: 'vw-av sq' }), h('div', {}, h('b', { text: (cfg.osu.username || 'osu!') + ' 🇫🇷' }), h('small', { text: '#' + new Intl.NumberFormat('fr-FR').format(cfg.osu.rank || 48213) + ' · ' + (cfg.osu.pp || 4210) + ' pp · ' + (cfg.osu.accuracy || 98.12) + ' %' })))),
+      w('float d', h('div', { class: 'vw-row' }, h('span', { class: 'vw-av music' }, Bio.icon('music', 16)), h('div', {}, h('b', { text: 'Midnight Drive' }), h('small', { text: 'lo-fi · généré en direct' })), h('span', { class: 'vw-eq' }, h('i'), h('i'), h('i')))),
+      h('div', { class: 'vis-orbit' }));
+  }
+  function buildDashVisual() {
+    const tile = (k, v) => h('div', { class: 'vd-tile' }, h('small', { text: k }), h('b', { text: v }));
+    return h('div', { class: 'vis vis-dash' },
+      h('div', { class: 'vd-side' }, ['Profil', 'Disposition', 'Apparence', 'Fond & effets', 'Liens', 'Abonnement'].map((t, i) => h('span', { class: i === 2 ? 'on' : '', text: t }))),
+      h('div', { class: 'vd-main' },
+        h('div', { class: 'vd-row' }, tile('Vues', new Intl.NumberFormat('fr-FR').format(cfg.views.base || 0)), tile('Widgets', cfg.layout.length + ' / ' + Object.keys(Bio.widgets).length), tile('Plan', (Bio.plans[plan] || Bio.plans.free).label)),
+        h('div', { class: 'vd-field' }, h('span', { text: 'Thème' }), h('span', { class: 'vd-sw' }, Object.values(Bio.themes).slice(0, 6).map((t) => h('i', { style: { background: 'linear-gradient(135deg,' + t.a + ',' + t.b + ')' } })))),
+        h('div', { class: 'vd-field' }, h('span', { text: 'Police' }), h('span', { class: 'vd-seg' }, ['Inter', 'Syne', 'Sora'].map((f, i) => h('b', { class: i === 1 ? 'on' : '', text: f })))),
+        h('div', { class: 'vd-field' }, h('span', { text: 'Opacité' }), h('span', { class: 'vd-range' }, h('i')))),
+      h('div', { class: 'vd-phone' }, h('span', { class: 'av' }), h('b', { text: cfg.displayName }), h('small', { text: cfg.bio[0] || '' }), h('span', { class: 'line' }), h('span', { class: 'line' }), h('span', { class: 'line short' })));
+  }
+  function buildCodeVisual() {
+    const lines = [
+      ['c', '/* config.js — tout ton profil tient ici */'],
+      ['k', 'window.BIO_CONFIG', ' = {'],
+      ['p', '  displayName', ': ', 's', '\'' + cfg.displayName + '\'', ','],
+      ['p', '  layout', ': [', 's', '\'profile\', \'discord\', \'music\', \'links\'', '],'],
+      ['p', '  theme', ': ', 's', '\'white\'', ',  ', 'c', '// 9 thèmes'],
+      ['p', '  premium', ': { ', 'p', 'plan', ': ', 's', '\'premium\'', ' },'],
+      ['k', '}', ';'],
+    ];
+    const code = h('pre', { class: 'vis vis-code' }, lines.map((l) => { const row = h('span', { class: 'row' }); for (let i = 0; i < l.length; i += 2) { if (l[i].length === 1 && i + 1 < l.length && typeof l[i + 1] === 'string' && l[i].match(/[ckps]/)) row.append(h('span', { class: 't-' + l[i], text: l[i + 1] })); else row.append(document.createTextNode(l[i])); } return row; }));
+    const hosts = h('div', { class: 'vis-hosts' }, ['GitHub Pages', 'Netlify', 'Vercel', 'Cloudflare'].map((t) => h('span', { text: t })));
+    return h('div', { class: 'vis-stack' }, code, hosts);
+  }
+
+  /* ------------------------------------------------------------ tout ce qui est inclus */
+  const allItems = sections.flatMap((s) => s.items || []);
+  if (allItems.length) {
+    main.append(h('section', { class: 'sec', id: 'fonctionnalites' }, h('div', { class: 'wrap' },
+      h('div', { class: 'sec-head center' }, h('p', { class: 'k', text: 'Tout ce qui est inclus' }), h('h2', { text: site.featuresTitle || 'Chaque détail, du premier pixel au dernier widget' }), site.featuresSubtitle ? h('p', { text: site.featuresSubtitle }) : null),
+      h('div', { class: 'grid compact' }, allItems.map((it) => h('article', { class: 'feat reveal' },
+        h('span', { class: 'f-ico' }, Bio.icon(Bio.hasIcon(it.icon) ? it.icon : 'sparkles', 17)), h('div', {}, h('h3', { text: it.title }), h('p', { text: it.text }))))))));
   }
 
   /* ------------------------------------------------------------ tarifs */

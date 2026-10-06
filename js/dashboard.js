@@ -36,7 +36,7 @@
     saveDraft();
     pushPreview();
     if (opts.sync) syncAll();
-    else if (D.heroSync) D.heroSync();
+    else { if (D.heroSync) D.heroSync(); (D.marks || []).forEach((m) => m()); }
   }
   function replaceConfig(next) {
     D.cfg = Bio.normalize(next, { enforce: false });
@@ -91,6 +91,13 @@
     const lockTag = gate ? h('a', { class: 'lock', href: '#s-abonnement', 'data-min': gate.min, title: 'Nécessite le plan ' + Bio.plans[gate.min].label }, Bio.icon('lock', 11), Bio.plans[gate.min].label) : null;
     const lab = h(opts.stack ? 'div' : 'label', { class: opts.stack ? 'f-label' : null }, h('span', { class: 'f-lt' }, label, lockTag), opts.hint ? h('small', { text: opts.hint }) : null);
     const el = h('div', { class: 'field' + (opts.stack ? ' stack' : ''), 'data-gate': gate ? opts.path : null }, lab, h('div', { class: 'f-ctl' + (opts.col ? ' col' : '') }, ctl));
+    if (opts.path) {
+      const dot = h('i', { class: 'f-mod', title: 'Modifié par rapport à config.js' });
+      lab.firstChild.append(dot);
+      const mark = () => { dot.hidden = JSON.stringify(U.getPath(D.cfg, opts.path)) === JSON.stringify(U.getPath(original, opts.path)); };
+      (D.marks = D.marks || []).push(mark);
+      D.syncs.push(mark);
+    }
     if (gate) {
       const paint = () => {
         const locked = Bio.locked(D.cfg, opts.path);
@@ -120,7 +127,7 @@
   };
   F.number = (f) => F.text(Object.assign({ inputType: 'number', number: true }, f));
   F.lines = (f) => {
-    const a = h('textarea', { class: 'in', rows: 4, spellcheck: 'false', placeholder: f.placeholder || '', 'data-path': f.path });
+    const a = h('textarea', { class: 'in' + (f.mono ? ' mono' : ''), rows: f.mono ? 8 : 4, spellcheck: 'false', placeholder: f.placeholder || '', 'data-path': f.path });
     const toStr = () => (f.asText ? String(get(f.path) || '') : [].concat(get(f.path) || []).join('\n'));
     a.value = toStr();
     a.addEventListener('input', () => set(f.path, f.asText ? a.value : a.value.split('\n').map((s) => s.trim()).filter(Boolean)));
@@ -467,6 +474,7 @@
         { type: 'toggle', path: 'verified', label: 'Badge vérifié', hint: 'Étincelle à côté du nom' },
         { type: 'lines', path: 'bio', label: 'Accroche', hint: 'Une phrase par ligne, sous le nom : elles s’écrivent et s’effacent en boucle.' },
         { type: 'lines', path: 'about', label: 'À propos', hint: 'Texte libre du widget « À propos » (vide = widget masqué).', asText: true },
+        { type: 'text', path: 'pronouns', label: 'Pronoms', placeholder: 'elle / she', hint: 'Affichés dans la ligne d’infos, optionnel' },
         { type: 'text', path: 'location', label: 'Localisation', placeholder: 'Paris, France' },
         { type: 'text', path: 'timezone', label: 'Fuseau horaire', placeholder: 'Europe/Paris', hint: 'Affiche ton heure locale en direct (laisse vide pour masquer)', mono: true },
         { type: 'number', path: 'uid', label: 'UID', hint: 'Ton numéro de membre' },
@@ -476,6 +484,12 @@
       { title: 'Écran d’entrée', fields: [
         { type: 'toggle', path: 'splash.enabled', label: 'Activer', hint: 'Le clic permet aussi de lancer la musique automatiquement' },
         { type: 'text', path: 'splash.text', label: 'Texte' },
+      ] },
+      { title: 'SEO & partage', fields: [
+        { type: 'text', path: 'seo.title', label: 'Titre de partage', placeholder: 'Nova — tous mes liens', hint: 'og:title (par défaut : titre de l’onglet)' },
+        { type: 'lines', path: 'seo.description', label: 'Description', hint: 'Affichée sous le lien quand ta page est partagée (Discord, X, iMessage…).', asText: true },
+        { type: 'image', path: 'seo.image', label: 'Image de partage', hint: 'og:image — une URL https (1200 × 630 recommandé). Les images importées ne sont pas prises en charge ici.', wide: true, max: 1200 },
+        { type: 'toggle', path: 'seo.noindex', label: 'Masquer des moteurs de recherche', hint: 'Ajoute robots: noindex' },
       ] },
     ] },
     { id: 'disposition', icon: 'layers', title: 'Disposition', desc: 'Les widgets de ta page et leur ordre', groups: [
@@ -507,6 +521,10 @@
         { type: 'range', path: 'card.opacity', label: 'Opacité', min: 0.05, max: 1, step: 0.01, format: (v) => Math.round(v * 100), unit: '%' },
         { type: 'range', path: 'card.blur', label: 'Flou du verre', min: 0, max: 50, step: 1, unit: 'px' },
         { type: 'range', path: 'card.radius', label: 'Arrondi', min: 0, max: 48, step: 1, unit: 'px' },
+        { type: 'range', path: 'page.shadow', label: 'Ombre', min: 0, max: 2, step: 0.1, format: (v) => Math.round(v * 100), unit: '%' },
+        { type: 'range', path: 'page.width', label: 'Largeur de la colonne', min: 360, max: 760, step: 10, unit: 'px' },
+        { type: 'range', path: 'page.gap', label: 'Espace entre widgets', min: 0, max: 32, step: 1, unit: 'px' },
+        { type: 'seg', path: 'page.valign', label: 'Position', options: [['center', 'Centrée'], ['top', 'En haut']] },
         { type: 'choice', path: 'linkStyle', label: 'Style des boutons', options: [
           { value: 'glass', label: 'Verre', desc: 'translucide' }, { value: 'solid', label: 'Plein', desc: 'dégradé accent' }, { value: 'outline', label: 'Contour', desc: 'fin & net' }, { value: 'neon', label: 'Néon', desc: 'lueur' }] },
       ] },
@@ -535,6 +553,8 @@
         { type: 'toggle', path: 'decor.scanlines', label: 'Scanlines', hint: 'Lignes de balayage rétro' },
       ] },
       { title: 'Interactions', fields: [
+        { type: 'range', path: 'effects.density', label: 'Densité des particules', min: 0.3, max: 2.5, step: 0.1, format: (v) => Math.round(v * 100), unit: '%' },
+        { type: 'range', path: 'effects.tiltStrength', label: 'Force de l’inclinaison', min: 0, max: 2, step: 0.1, format: (v) => Math.round(v * 100), unit: '%' },
         { type: 'toggle', path: 'effects.tilt', label: 'Inclinaison 3D', hint: 'La carte suit la souris' },
         { type: 'toggle', path: 'effects.spotlight', label: 'Halo du curseur' },
         { type: 'toggle', path: 'effects.cursor', label: 'Curseur personnalisé' },
@@ -546,7 +566,7 @@
     { id: 'liens', icon: 'link', title: 'Liens', desc: 'Les gros boutons de ta page', groups: [{ fields: [
       { type: 'list', path: 'links', label: 'Boutons', iconKind: 'ui', addLabel: 'Ajouter un lien', empty: 'Aucun lien. Ajoute ton portfolio, ta boutique, ton serveur…',
         title: (l) => l.label, subtitle: (l) => l.url, make: () => ({ icon: 'link', label: 'Nouveau lien', sub: '', url: 'https://' }),
-        fields: [{ key: 'label', label: 'Titre' }, { key: 'sub', label: 'Sous-titre' }, { key: 'url', label: 'URL (https://, mailto:, tel:)', full: true, mono: true, placeholder: 'https://…' }] },
+        fields: [{ key: 'label', label: 'Titre' }, { key: 'sub', label: 'Sous-titre' }, { key: 'url', label: 'URL (https://, mailto:, tel:)', full: true, mono: true, placeholder: 'https://…' }, { key: 'badge', label: 'Étiquette (ex. Nouveau)' }, { type: 'toggle', key: 'accent', label: 'Mettre en avant', hint: 'fond accentué' }, { type: 'toggle', key: 'sameTab', label: 'Même onglet', hint: 'ne pas ouvrir dans un nouvel onglet' }] },
     ] }] },
     { id: 'reseaux', icon: 'share', title: 'Réseaux', desc: 'Icônes sociales sous ton profil', groups: [{ fields: [
       { type: 'list', path: 'socials', label: 'Réseaux sociaux', iconKind: 'brand', addLabel: 'Ajouter un réseau', empty: 'Aucun réseau.',
@@ -563,6 +583,9 @@
         { type: 'note', content: () => h('span', {}, 'Sans piste, la page joue ', h('b', { text: '3 ambiances générées en direct' }), ' dans le navigateur (lo-fi, synthwave, ambient). Ajoute tes fichiers pour les remplacer.') },
         { type: 'toggle', path: 'music.autoplay', label: 'Lecture automatique', hint: 'Après le clic sur l’écran d’entrée' },
         { type: 'range', path: 'music.volume', label: 'Volume par défaut', min: 0, max: 1, step: 0.01, format: (v) => Math.round(v * 100), unit: '%' },
+        { type: 'toggle', path: 'music.loop', label: 'Lecture en boucle', hint: 'Repart au début après la dernière piste' },
+        { type: 'toggle', path: 'music.shuffle', label: 'Aléatoire' },
+        { type: 'toggle', path: 'music.showVolume', label: 'Afficher le volume' },
         { type: 'list', path: 'music.tracks', label: 'Pistes', iconKind: 'ui', addLabel: 'Ajouter une piste', empty: 'Aucune piste : les ambiances générées sont utilisées.',
           title: (t) => t.title, subtitle: (t) => t.artist, make: () => ({ icon: 'music', title: 'Nouvelle piste', artist: '', src: 'assets/son.mp3', cover: '' }),
           fields: [{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'src', label: 'Fichier audio (assets/son.mp3 ou URL)', full: true, mono: true }, { key: 'cover', label: 'Pochette (optionnel)', mono: true }, { key: 'tag', label: 'Étiquette (ex. Explicit)' }, { type: 'toggle', key: 'cors', label: 'CORS', hint: 'fichier hébergé ailleurs, serveur avec Access-Control-Allow-Origin' }] },
@@ -628,21 +651,38 @@
         { type: 'toggle', path: 'studio', label: 'Réglages rapides (touche E)', hint: 'Panneau de réglages sur la page publique' },
         { type: 'toggle', path: 'terminal', label: 'Terminal caché (touche `)' },
       ] },
+      { title: 'Accès', fields: [
+        { type: 'toggle', path: 'ageGate.enabled', label: 'Avertissement 18+', hint: 'Demande une confirmation avant d’afficher la page (mémorisée dans le navigateur)' },
+        { type: 'text', path: 'ageGate.text', label: 'Texte de l’avertissement' },
+      ] },
+      { title: 'CSS personnalisé', fields: [
+        { type: 'note', content: () => h('span', {}, 'Ajoute tes propres règles CSS, appliquées après celles de la page. Exemples : ', h('code', { text: '.name-text { letter-spacing: .1em }' }), ' ou ', h('code', { text: '.widget { border-radius: 8px }' }), '.') },
+        { type: 'lines', path: 'customCss', label: 'CSS', asText: true, mono: true, placeholder: '.widget { … }' },
+      ] },
     ] },
   ];
 
   /* ---------------------------------------------------------------- rendu */
   const main = $('#d-main'), nav = $('#d-nav');
   const hero = (() => {
-    const name = h('b'), stats = h('div', { class: 'hero-stats' });
+    const name = h('b'), stats = h('div', { class: 'hero-stats' }), check = h('div', { class: 'hero-check' });
     const el = h('section', { class: 'hero' },
       h('div', { class: 'hero-top' }, h('div', {}, h('p', { class: 'hero-k', text: 'Vue d’ensemble' }), h('h1', {}, 'Bonjour, ', name, ' !'), h('p', { class: 'hero-sub', text: 'Tout ce que tu changes ici s’affiche en direct dans l’aperçu. Pense à télécharger config.js quand tu as fini.' })),
         h('a', { class: 'btn pill', href: 'profile.html', target: '_blank', rel: 'noopener' }, Bio.icon('external', 14), 'Voir ma page')),
-      stats);
+      stats, check);
     const tile = (icon, label, val) => h('div', { class: 'tile' }, h('span', { class: 'tile-k' }, Bio.icon(icon, 13), label), h('b', { text: val }));
     D.heroSync = () => {
       const c = D.cfg;
       name.textContent = c.displayName || c.username;
+      const items = [
+        ['Avatar personnalisé', c.avatar && c.avatar !== 'assets/avatar.svg', '#s-profil'], ['Accroche', c.bio.length > 0, '#s-profil'], ['À propos', !!c.about.trim(), '#s-profil'],
+        ['Au moins 3 liens', c.links.length >= 3, '#s-liens'], ['Au moins 3 réseaux', c.socials.length >= 3, '#s-reseaux'], ['Discord connecté', !!c.discord.id, '#s-discord'],
+        ['Description de partage', !!c.seo.description, '#s-profil'], ['Lien de paiement', !!(c.premium.checkout.premium || c.premium.checkout.vip), '#s-abonnement'],
+      ];
+      const done = items.filter((i) => i[1]).length, pct = Math.round((done / items.length) * 100);
+      check.textContent = '';
+      check.append(h('div', { class: 'hc-head' }, h('span', {}, h('b', { text: pct + ' %' }), ' de ta page est prête'), h('span', { class: 'hc-bar' }, h('i', { style: { width: pct + '%' } }))),
+        h('ul', { class: 'hc-list' }, items.map((i) => h('li', { class: i[1] ? 'ok' : '' }, h('a', { href: i[2] }, Bio.icon(i[1] ? 'check' : 'plus', 12), h('span', { text: i[0] }))))));
       stats.textContent = '';
       stats.append(tile('link', 'URL', '/' + c.username), tile('eye', 'Vues', new Intl.NumberFormat('fr-FR').format(c.views.base || 0)), tile('layers', 'Widgets', c.layout.length + ' / ' + Object.keys(Bio.widgets).length),
         tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile((Bio.plans[c.premium.plan] || {}).icon || 'user', 'Plan', (Bio.plans[c.premium.plan] || Bio.plans.free).label));
@@ -658,6 +698,22 @@
     nav.append(h('a', { href: '#s-' + s.id, 'data-id': s.id }, Bio.icon(s.icon, 17), h('span', { text: s.title })));
   });
   nav.append(h('div', { class: 'nav-foot' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'S' }), ' télécharge config.js', h('br'), 'Brouillon sauvegardé automatiquement dans ce navigateur.'));
+  // recherche : filtre les champs par libellé / indice ; les panneaux vides se masquent
+  const search = h('input', { class: 'in d-search', type: 'search', placeholder: 'Rechercher un réglage…', 'aria-label': 'Rechercher un réglage' });
+  nav.prepend(h('div', { class: 'd-search-wrap' }, Bio.icon('search', 14), search));
+  const applySearch = () => {
+    const q = search.value.trim().toLowerCase();
+    $$('.d-panel').forEach((panel) => {
+      let any = false;
+      $$('.field', panel).forEach((f) => { const hit = !q || f.textContent.toLowerCase().includes(q); f.classList.toggle('s-hide', !hit); if (hit) any = true; });
+      $$('.p-group', panel).forEach((g) => g.classList.toggle('s-hide', !!q && !$$('.field:not(.s-hide)', g).length));
+      panel.classList.toggle('s-hide', !!q && !any);
+    });
+    hero.classList.toggle('s-hide', !!q);
+    links.forEach((a) => a.classList.toggle('s-hide', !!q && $('#s-' + a.dataset.id).classList.contains('s-hide')));
+  };
+  search.addEventListener('input', applySearch);
+  addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); search.focus(); } if (e.key === 'Escape' && document.activeElement === search) { search.value = ''; applySearch(); search.blur(); } });
   const links = $$('a', nav);
   const obs = new IntersectionObserver((entries) => {
     entries.forEach((en) => { if (en.isIntersecting) links.forEach((a) => a.classList.toggle('active', a.dataset.id === en.target.id.slice(2))); });

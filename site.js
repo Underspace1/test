@@ -5,16 +5,12 @@
 window.BIO_SITE = {
   "nav": [
     {
-      "label": "Personnalisation",
-      "href": "#personnalisation"
+      "label": "Présentation",
+      "href": "#presentation"
     },
     {
-      "label": "Widgets",
-      "href": "#widgets"
-    },
-    {
-      "label": "Dashboard",
-      "href": "#dashboard"
+      "label": "Fonctionnalités",
+      "href": "#fonctionnalites"
     },
     {
       "label": "Tarifs",

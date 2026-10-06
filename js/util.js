@@ -430,6 +430,7 @@
     { path: 'effects.trail', min: 'vip', label: 'Traînée d’étincelles', test: (v) => v === true, fallback: false },
     { path: 'effects.glitch', min: 'vip', label: 'Glitch du nom', test: (v) => v === true, fallback: false },
     { path: 'views.endpoint', min: 'vip', label: 'Compteur de vues global (endpoint)', test: (v) => !!v, fallback: '' },
+    { path: 'customCss', min: 'premium', label: 'CSS personnalisé', test: (v) => !!(v && v.trim()), fallback: '' },
   ];
   Bio.gateFor = (path) => Bio.gates.find((g) => g.path === path) || null;
   // verrou présent et plan insuffisant (indépendamment de la valeur courante)
@@ -460,6 +461,7 @@
     verified: true,
     bio: ['Hello world.'],
     about: '',
+    pronouns: '',
     location: '',
     timezone: '',
     uid: 1,
@@ -467,6 +469,8 @@
     pageTitle: '',
     layout: ['profile', 'about', 'views', 'discord', 'roblox', 'osu', 'embed', 'music', 'links'],
     socialsLimit: 5,
+    page: { width: 520, gap: 12, valign: 'center', shadow: 1 },
+    seo: { title: '', description: '', image: '', noindex: false },
     font: 'inter',
     nameStyle: 'neon',
     linkStyle: 'glass',
@@ -479,14 +483,16 @@
     accent2: '',
     card: { style: 'glass', border: 'none', opacity: 0.5, blur: 16, radius: 26 },
     decor: { orbs: false, noise: false, vignette: true, scanlines: false, dots: true },
-    effects: { particles: 'none', tilt: true, cursor: false, trail: false, glitch: false, spotlight: true, ripple: true },
+    effects: { particles: 'none', density: 1, tiltStrength: 1, tilt: true, cursor: false, trail: false, glitch: false, spotlight: true, ripple: true },
     discord: { id: '', demo: true, useAvatar: false, tag: '' },
     roblox: { id: '', username: '', displayName: '', friends: 0, followers: 0, avatar: '', live: true, proxy: '' },
     osu: { id: '', username: '', mode: 'osu', country: '', rank: 0, countryRank: 0, pp: 0, accuracy: 0, playcount: 0, level: 0, avatar: '', endpoint: '' },
     embed: { url: '', title: '' },
     premium: { plan: 'free', checkout: { premium: '', vip: '' }, badge: true, branding: true },
     views: { base: 0, endpoint: '' },
-    music: { autoplay: true, volume: 0.55, tracks: [] },
+    music: { autoplay: true, volume: 0.55, loop: true, shuffle: false, showVolume: true, tracks: [] },
+    customCss: '',
+    ageGate: { enabled: false, text: 'Cette page est réservée aux adultes.' },
     badges: [],
     socials: [],
     links: [],
@@ -506,6 +512,7 @@
     'card.border': ['spotlight', 'gradient', 'none'],
     'effects.particles': ['fireflies', 'snow', 'stars', 'shooting', 'bokeh', 'rain', 'none'],
     'osu.mode': ['osu', 'taiko', 'fruits', 'mania'],
+    'page.valign': ['center', 'top'],
     theme: Object.keys(Bio.themes),
   };
   /* opts.enforce === false → pas de repli (brouillon du dashboard : les valeurs déclarées sont conservées) */
@@ -519,7 +526,13 @@
     const ids = Object.keys(Bio.widgets);
     out.layout = Array.isArray(out.layout) ? out.layout.filter((w, i, a) => ids.includes(w) && a.indexOf(w) === i) : Bio.defaults.layout.slice();
     out.about = String(out.about || '');
-    ['roblox', 'osu', 'embed', 'premium'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
+    ['roblox', 'osu', 'embed', 'premium', 'page', 'seo', 'ageGate'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
+    out.page.width = U.clamp(parseInt(out.page.width, 10) || 520, 360, 760);
+    out.page.gap = U.clamp(parseInt(out.page.gap, 10) || 0, 0, 32);
+    out.page.shadow = U.clamp(+out.page.shadow || 0, 0, 2);
+    out.effects.density = U.clamp(+out.effects.density || 1, 0.3, 2.5);
+    out.effects.tiltStrength = U.clamp(+out.effects.tiltStrength || 1, 0, 2);
+    out.customCss = String(out.customCss || '').replace(/<\/style/gi, '').slice(0, 20000);
     if (!Bio.plans[out.premium.plan]) out.premium.plan = 'free';
     if (!out.premium.checkout || typeof out.premium.checkout !== 'object') out.premium.checkout = { premium: '', vip: '' };
     out.locked = opts && opts.enforce === false ? [] : Bio.entitlements(out);

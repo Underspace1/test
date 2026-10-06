@@ -217,6 +217,7 @@ void main(){
     else if (mode === 'stars' || mode === 'shooting') n = clamp(Math.round(area / 5500), 60, 260);
     else if (mode === 'bokeh') n = clamp(Math.round(area / 60000), 8, 26);
     else if (mode === 'rain') n = clamp(Math.round(area / 7000), 60, 220);
+    n = Math.round(n * (Bio.cfg.effects.density || 1));
     if (reduce) n = Math.round(n / 3);
     this.list = [];
     this.shots = [];
@@ -422,7 +423,7 @@ void main(){
     }, { passive: true });
     addEventListener('pointerleave', () => { this.mouse.x = this.mouse.y = -999; });
     Bio.on('theme', () => this.makeSprite());
-    Bio.on('cfg', (path) => { if (path === 'effects.particles') this.seed(); });
+    Bio.on('cfg', (path) => { if (path === 'effects.particles' || path === 'effects.density') this.seed(); });
     Bio.on('config', () => this.seed());
     Bio.frame((dt, t) => this.draw(dt, t));
   };

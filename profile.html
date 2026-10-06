@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>@nova</title>
+  <meta name="description" content="Nova — tous mes liens au même endroit.">
+  <meta name="theme-color" content="#09090b">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="@nova">
+  <meta property="og:description" content="Tous mes liens au même endroit.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- fond : shader / aurora / grille / vidéo / image -->
+  <div id="bg" aria-hidden="true">
+    <div id="bg-media">
+      <video id="bg-video" muted loop playsinline preload="auto"></video>
+      <div id="bg-image"></div>
+      <canvas id="bg-gl"></canvas>
+      <div id="bg-aurora"><i></i><i></i><i></i><i></i></div>
+      <div id="bg-grid"><i class="horizon"></i><i class="floor"></i></div>
+    </div>
+    <div id="bg-dim"></div>
+  </div>
+  <div id="decor" aria-hidden="true">
+    <div class="orbs"><i></i><i></i><i></i></div>
+    <div class="spotlight"></div>
+    <div class="dots"></div>
+    <div class="noise"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+  </div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="ripples" aria-hidden="true"></div>
+  <canvas id="matrix" aria-hidden="true"></canvas>
+
+  <div id="cursor" aria-hidden="true"><i class="c-ring"></i><i class="c-dot"></i></div>
+
+  <!-- écran "cliquer pour entrer" -->
+  <div id="splash"></div>
+
+  <div id="tools" aria-label="Outils"></div>
+
+  <main id="stage">
+    <div id="column" class="column"></div>
+  </main>
+
+  <div id="overlays"></div>
+  <div id="toasts" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript">Cette page a besoin de JavaScript pour s’afficher.</div>
+  </noscript>
+
+  <script src="config.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/background.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/presence.js"></script>
+  <script src="js/integrations.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/overlays.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

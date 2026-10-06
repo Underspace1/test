@@ -45,7 +45,9 @@
     const avatar = h('div', { class: 'avatar' }, h('span', { class: 'ring' }), h('span', { class: 'frame' }, img), h('span', { class: 'status', 'data-status': 'none' }));
 
     const nameText = h('span', { class: 'name-text', 'data-text': cfg.displayName, text: cfg.displayName });
-    const name = h('h1', { class: 'name' }, nameText, cfg.verified ? h('span', { class: 'verified', 'data-tip': 'Compte vérifié' }, Bio.icon('sparkles', 17)) : null);
+    const plan = Bio.plans[cfg.premium.plan] || Bio.plans.free;
+    const planBadge = plan.icon && cfg.premium.badge ? h('span', { class: 'plan-badge', 'data-plan': cfg.premium.plan, 'data-tip': 'Membre ' + plan.label }, Bio.icon(plan.icon, 13)) : null;
+    const name = h('h1', { class: 'name' }, nameText, cfg.verified ? h('span', { class: 'verified', 'data-tip': 'Compte vérifié' }, Bio.icon('sparkles', 17)) : null, planBadge);
 
     const badges = (cfg.badges || []).length ? h('div', { class: 'badges' }, cfg.badges.map((b) =>
       h('span', { class: 'badge', 'data-tip': b.label, tabindex: '0', role: 'img', 'aria-label': b.label }, Bio.icon(b.icon, 15)))) : null;
@@ -233,7 +235,8 @@
       const el = b && b();
       if (el) col.append(rev(el));
     });
-    col.append(rev(h('footer', { class: 'foot' }, h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }), h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })))));
+    const branding = cfg.premium.plan === 'free' || cfg.premium.branding ? h('a', { class: 'brandlink', href: 'index.html', target: '_blank', rel: 'noopener' }, Bio.icon('sparkles', 11), h('span', { text: 'Fait avec biolink' })) : null;
+    col.append(rev(h('footer', { class: 'foot' }, h('span', { text: '© ' + new Date().getFullYear() + ' @' + cfg.username }), branding, h('span', { class: 'hint' }, h('kbd', { text: 'Ctrl' }), '+', h('kbd', { text: 'K' })))));
 
     UI.buildTools();
     UI.applyCard();

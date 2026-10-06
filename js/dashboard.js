@@ -29,6 +29,8 @@
   };
   function set(path, val, opts = {}) {
     U.setPath(D.cfg, path, val);
+    const g = Bio.gateFor(path);
+    if (g && !Bio.allows(D.cfg.premium.plan, g.min) && (g.test ? g.test(val, D.cfg) : !!val)) { setTimeout(enforce, 0); }
     D.dirty = true;
     setStatus();
     saveDraft();
@@ -75,7 +77,7 @@
   $('#pv-play').append(Bio.icon('play', 15));
   $('#pv-play').addEventListener('click', () => { try { iframe.contentWindow.postMessage({ type: 'bio:play' }, '*'); } catch (e) { /* ignore */ } });
   $('#pv-reload').append(Bio.icon('reset', 15));
-  $('#pv-reload').addEventListener('click', () => { D.ready = false; iframe.src = 'index.html?preview=1&t=' + Date.now(); });
+  $('#pv-reload').addEventListener('click', () => { D.ready = false; iframe.src = 'profile.html?preview=1&t=' + Date.now(); });
   $('#pv-close').append(Bio.icon('close', 16));
   $('#pv-close').addEventListener('click', () => preview.classList.remove('show'));
   $('#pv-fab').prepend(Bio.icon('eye', 16));
@@ -85,8 +87,21 @@
   const F = {};
 
   function field(label, ctl, opts = {}) {
-    const lab = h(opts.stack ? 'div' : 'label', { class: opts.stack ? 'f-label' : null }, label, opts.hint ? h('small', { text: opts.hint }) : null);
-    return h('div', { class: 'field' + (opts.stack ? ' stack' : '') }, lab, h('div', { class: 'f-ctl' + (opts.col ? ' col' : '') }, ctl));
+    const gate = opts.path ? Bio.gateFor(opts.path) : null;
+    const lockTag = gate ? h('a', { class: 'lock', href: '#s-abonnement', 'data-min': gate.min, title: 'Nécessite le plan ' + Bio.plans[gate.min].label }, Bio.icon('lock', 11), Bio.plans[gate.min].label) : null;
+    const lab = h(opts.stack ? 'div' : 'label', { class: opts.stack ? 'f-label' : null }, h('span', { class: 'f-lt' }, label, lockTag), opts.hint ? h('small', { text: opts.hint }) : null);
+    const el = h('div', { class: 'field' + (opts.stack ? ' stack' : ''), 'data-gate': gate ? opts.path : null }, lab, h('div', { class: 'f-ctl' + (opts.col ? ' col' : '') }, ctl));
+    if (gate) {
+      const paint = () => el.classList.toggle('locked', Bio.locked(D.cfg, opts.path));
+      D.syncs.push(paint);
+      paint();
+    }
+    return el;
+  }
+  // après un changement, les verrous sont ré-appliqués (replis) et le dashboard reflète la valeur effective
+  function enforce() {
+    const applied = Bio.entitlements(D.cfg);
+    if (applied.length) { syncAll(); U.toast('Fonction réservée au plan ' + Bio.plans[Bio.gateFor(applied[0]).min].label + ' — repli appliqué', 'lock'); }
   }
 
   F.text = (f) => {
@@ -229,6 +244,30 @@
     return field(f.label, h('div', { class: 'img-field' }, prev, h('div', { class: 'img-ctl' }, path, row)), Object.assign({ stack: true }, f));
   };
   F.note = (f) => h('div', { class: 'note' }, Bio.icon('info', 16), h('div', {}, f.content()));
+
+  F.planpicker = () => {
+    const site = window.BIO_SITE || {};
+    const tiers = (site.pricing && site.pricing.tiers) || [];
+    const wrap = h('div', { class: 'plans' });
+    const gatesList = h('ul', { class: 'gates' });
+    const paint = () => {
+      wrap.textContent = '';
+      Object.entries(Bio.plans).forEach(([id, p]) => {
+        const t = tiers.find((x) => x.id === id) || {};
+        const b = h('button', { type: 'button', class: 'plan' + (get('premium.plan') === id ? ' on' : ''), role: 'radio', 'aria-checked': get('premium.plan') === id ? 'true' : 'false' },
+          h('span', { class: 'plan-h' }, h('b', { text: p.label }), p.icon ? Bio.icon(p.icon, 15) : null),
+          h('span', { class: 'plan-p', text: t.priceMonth ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(t.priceMonth) + ' / mois' : 'Gratuit' }),
+          h('span', { class: 'plan-t', text: t.tagline || '' }));
+        b.addEventListener('click', () => { set('premium.plan', id, { sync: true }); setTimeout(enforce, 0); });
+        wrap.append(b);
+      });
+      gatesList.textContent = '';
+      Bio.gates.forEach((g) => gatesList.append(h('li', { class: Bio.allows(get('premium.plan'), g.min) ? 'ok' : 'no' }, Bio.icon(Bio.allows(get('premium.plan'), g.min) ? 'check' : 'lock', 13), h('span', { text: g.label }), h('small', { text: Bio.plans[g.min].label }))));
+    };
+    D.syncs.push(paint);
+    paint();
+    return field('Plan actif', h('div', { class: 'f-ctl col', style: { alignItems: 'stretch', gap: '14px' } }, wrap, h('div', { class: 'gates-wrap' }, h('p', { class: 'gates-k', text: 'Fonctions selon le plan' }), gatesList)), { stack: true, hint: 'Déclare ici le plan que tu as choisi : les fonctions réservées se débloquent dans le dashboard et sur ta page.' });
+  };
 
   // disposition : widgets actifs (dans l'ordre) puis inactifs ; monter / descendre / activer
   F.layout = (f) => {
@@ -543,6 +582,18 @@
         { type: 'text', path: 'embed.title', label: 'Titre du widget', placeholder: 'En écoute en ce moment', hint: 'Optionnel' },
       ] },
     ] },
+    { id: 'abonnement', icon: 'crown', title: 'Abonnement', desc: 'Ton plan, les fonctions débloquées, les liens de paiement', groups: [
+      { fields: [
+        { type: 'planpicker' },
+        { type: 'toggle', path: 'premium.badge', label: 'Badge de plan', hint: 'Affiche l’icône Premium / VIP à côté du nom' },
+        { type: 'toggle', path: 'premium.branding', label: 'Mention « Fait avec biolink »', hint: 'Toujours affichée avec le plan Gratuit', path2: 'premium.branding' },
+      ] },
+      { title: 'Liens de paiement', fields: [
+        { type: 'note', content: () => h('span', {}, 'Le site est statique : le paiement passe par un lien hébergé (', h('b', { text: 'Stripe Payment Link' }), ', Ko-fi, PayPal…). Après paiement, choisis ton plan ci-dessus et télécharge config.js. Ces liens sont utilisés par les boutons de la page d’accueil.') },
+        { type: 'text', path: 'premium.checkout.premium', label: 'Lien Premium', placeholder: 'https://buy.stripe.com/…', mono: true },
+        { type: 'text', path: 'premium.checkout.vip', label: 'Lien VIP', placeholder: 'https://buy.stripe.com/…', mono: true },
+      ] },
+    ] },
     { id: 'avance', icon: 'cpu', title: 'Avancé', desc: 'Compteur, extras', groups: [
       { title: 'Compteur de vues', fields: [
         { type: 'number', path: 'views.base', label: 'Valeur de départ' },
@@ -561,7 +612,7 @@
     const name = h('b'), stats = h('div', { class: 'hero-stats' });
     const el = h('section', { class: 'hero' },
       h('div', { class: 'hero-top' }, h('div', {}, h('p', { class: 'hero-k', text: 'Vue d’ensemble' }), h('h1', {}, 'Bonjour, ', name, ' !'), h('p', { class: 'hero-sub', text: 'Tout ce que tu changes ici s’affiche en direct dans l’aperçu. Pense à télécharger config.js quand tu as fini.' })),
-        h('a', { class: 'btn pill', href: 'index.html', target: '_blank', rel: 'noopener' }, Bio.icon('external', 14), 'Voir ma page')),
+        h('a', { class: 'btn pill', href: 'profile.html', target: '_blank', rel: 'noopener' }, Bio.icon('external', 14), 'Voir ma page')),
       stats);
     const tile = (icon, label, val) => h('div', { class: 'tile' }, h('span', { class: 'tile-k' }, Bio.icon(icon, 13), label), h('b', { text: val }));
     D.heroSync = () => {
@@ -569,7 +620,7 @@
       name.textContent = c.displayName || c.username;
       stats.textContent = '';
       stats.append(tile('link', 'URL', '/' + c.username), tile('eye', 'Vues', new Intl.NumberFormat('fr-FR').format(c.views.base || 0)), tile('layers', 'Widgets', c.layout.length + ' / ' + Object.keys(Bio.widgets).length),
-        tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile('palette', 'Thème', (Bio.themes[c.theme] || {}).label || c.theme));
+        tile('share', 'Réseaux', String(c.socials.length)), tile('link', 'Liens', String(c.links.length)), tile('crown', 'Plan', (Bio.plans[c.premium.plan] || Bio.plans.free).label));
     };
     D.syncs.push(D.heroSync);
     return el;
@@ -605,7 +656,7 @@
   });
   abtn('copy', 'Copier', '', async () => { const ok = await U.copy(Bio.serialize(D.cfg)); U.toast(ok ? 'config.js copié dans le presse-papiers' : 'Copie impossible', ok ? 'check' : 'close'); });
   abtn('download', 'Télécharger config.js', 'primary', exportFile);
-  const open = h('a', { class: 'btn ghost icon', href: 'index.html', target: '_blank', rel: 'noopener', title: 'Voir la page' }, Bio.icon('external', 15));
+  const open = h('a', { class: 'btn ghost icon', href: 'profile.html', target: '_blank', rel: 'noopener', title: 'Voir la page' }, Bio.icon('external', 15));
   actions.append(open);
   function exportFile() {
     U.download('config.js', Bio.serialize(D.cfg));

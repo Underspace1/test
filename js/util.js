@@ -402,6 +402,32 @@
     links: { label: 'Liens', desc: 'les gros boutons', icon: 'link' },
   };
 
+  /* ---------- abonnement ----------
+     Le plan est déclaré dans config.js (site statique : pas de compte). Chaque verrou cite un
+     chemin de config, le plan minimum et le repli appliqué si le plan est insuffisant.  */
+  Bio.plans = {
+    free: { rank: 0, label: 'Gratuit', icon: '' },
+    premium: { rank: 1, label: 'Premium', icon: 'sparkles' },
+    vip: { rank: 2, label: 'VIP', icon: 'crown' },
+  };
+  Bio.planRank = (plan) => (Bio.plans[plan] || Bio.plans.free).rank;
+  Bio.allows = (plan, minPlan) => Bio.planRank(plan) >= Bio.planRank(minPlan);
+  // { path, min, label, test?(value) → true si la valeur exige le plan, fallback: valeur ou fonction(cfg) }
+  Bio.gates = [];
+  Bio.gateFor = (path) => Bio.gates.find((g) => g.path === path) || null;
+  Bio.locked = (cfg, path) => { const g = Bio.gateFor(path); return !!g && !Bio.allows(cfg.premium.plan, g.min); };
+  Bio.entitlements = (cfg) => {
+    const applied = [];
+    for (const g of Bio.gates) {
+      if (Bio.allows(cfg.premium.plan, g.min)) continue;
+      const v = U.getPath(cfg, g.path);
+      if (g.test ? !g.test(v, cfg) : !v) continue;
+      U.setPath(cfg, g.path, typeof g.fallback === 'function' ? g.fallback(v, cfg) : g.fallback);
+      applied.push(g.path);
+    }
+    return applied;
+  };
+
   /* ---------- valeurs par défaut de la configuration ---------- */
   Bio.defaults = {
     username: 'username',
@@ -435,6 +461,7 @@
     roblox: { id: '', username: '', displayName: '', friends: 0, followers: 0, avatar: '', live: true, proxy: '' },
     osu: { id: '', username: '', mode: 'osu', country: '', rank: 0, countryRank: 0, pp: 0, accuracy: 0, playcount: 0, level: 0, avatar: '', endpoint: '' },
     embed: { url: '', title: '' },
+    premium: { plan: 'free', checkout: { premium: '', vip: '' }, badge: true, branding: true },
     views: { base: 0, endpoint: '' },
     music: { autoplay: true, volume: 0.55, tracks: [] },
     badges: [],
@@ -468,7 +495,9 @@
     const ids = Object.keys(Bio.widgets);
     out.layout = Array.isArray(out.layout) ? out.layout.filter((w, i, a) => ids.includes(w) && a.indexOf(w) === i) : Bio.defaults.layout.slice();
     out.about = String(out.about || '');
-    ['roblox', 'osu', 'embed'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
+    ['roblox', 'osu', 'embed', 'premium'].forEach((k) => { if (!out[k] || typeof out[k] !== 'object') out[k] = U.deepMerge({}, Bio.defaults[k]); });
+    if (!Bio.plans[out.premium.plan]) out.premium.plan = 'free';
+    out.locked = Bio.entitlements(out);
     out.socialsLimit = Math.max(0, parseInt(out.socialsLimit, 10) || 0);
     ['badges', 'socials', 'links'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     if (!Array.isArray(out.music.tracks)) out.music.tracks = [];

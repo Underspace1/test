@@ -234,6 +234,8 @@ html:not(.no-glitch) .name-text.glitching { animation: glitch .52s steps(1) 1; }
   100% { text-shadow: none; transform: none; }
 }
 .verified { color: #fff; display: grid; filter: drop-shadow(0 0 8px rgb(255 255 255 / .8)); }
+.plan-badge { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; color: #000; background: #fff; box-shadow: 0 0 14px rgb(255 255 255 / .55); }
+.plan-badge[data-plan="vip"] { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 16px rgb(245 158 11 / .6); }
 .badges { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
 .badge { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; color: #fff; background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .1); transition: transform .2s var(--ease), background .2s; }
 .badge:hover { transform: translateY(-2px); background: rgb(255 255 255 / .16); }
@@ -367,6 +369,8 @@ html[data-links="neon"] .link .l-ico { color: var(--accent); box-shadow: 0 0 12p
 
 .foot { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 6px 4px 0; font-size: 11.5px; color: var(--faint); }
 .foot .hint { display: inline-flex; align-items: center; gap: 4px; }
+.brandlink { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--faint); transition: color .2s, border-color .2s; }
+.brandlink:hover { color: #fff; border-color: rgb(255 255 255 / .3); }
 
 /* ----------------------------------------------------------- tooltips */
 :where([data-tip]) { position: relative; }

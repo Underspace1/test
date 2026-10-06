@@ -3,7 +3,8 @@
 Une page de **bio link** minimaliste et moderne, 100 % statique (HTML + CSS + JS, **aucune dépendance, aucun build**) — dans l'esprit de *drift.rip* / *guns.lol* : des **widgets** empilés en verre sombre sur un fond monochrome, un **dashboard visuel** pour tout régler sans toucher au code, et quelques surprises en plus.
 
 ```
-index.html      → ta page publique
+index.html      → la page d’accueil (présentation + tarifs)
+profile.html    → ta page publique
 dashboard.html  → l'éditeur (aperçu en direct, modèles, export de config.js)
 ```
 
@@ -138,7 +139,8 @@ Site statique : GitHub Pages, Netlify, Vercel, Cloudflare Pages… il suffit de 
 ## Structure
 
 ```
-index.html         page publique
+index.html         page d’accueil
+profile.html       page publique (profil)
 dashboard.html     éditeur visuel
 config.js          ← ta configuration
 css/style.css      styles de la page
@@ -160,6 +162,6 @@ js/
 ## Notes
 
 - Les données externes (Discord…) sont toujours insérées comme **texte** (jamais en HTML) ; les URL de la config sont filtrées (`http(s)`, `mailto`, `tel`, images `data:`).
-- L'aperçu du dashboard est la vraie page chargée dans une iframe (`index.html?preview=1`) et pilotée par `postMessage` ; en mode aperçu, l'écran d'entrée est sauté et le compteur de vues n'est pas incrémenté.
+- L'aperçu du dashboard est la vraie page chargée dans une iframe (`profile.html?preview=1`) et pilotée par `postMessage` ; en mode aperçu, l'écran d'entrée est sauté et le compteur de vues n'est pas incrémenté.
 - Polices : Inter, Space Grotesk, JetBrains Mono (+ Sora, Outfit, Poppins, Syne, Playfair Display à la demande) via Google Fonts, avec repli sur les polices système.
 - Icônes de marques : [Simple Icons](https://simpleicons.org) (CC0). Les marques appartiennent à leurs propriétaires respectifs.
